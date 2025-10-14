@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Weekly Agendas — Master Template (Minimal dbl-click linking)</title>
+<title>Weekly Agendas — Master Template (Minimal dbl-click linking + typed search)</title>
 <style>
   :root{ --ink:#111; --muted:#666; --link:#2166c2; --ring:#1697BB; --bg:#fff; --border:#e5e7eb; }
   html,body{font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial; color:var(--ink); background:#fff; margin:0}
@@ -44,10 +44,8 @@
   .link{color:var(--link); text-decoration:underline; cursor:pointer}
   .muted{color:#666}
 
-  /* Minimal dbl-click affordance */
   .dblHint{ font-size:11px; color:#9CA3AF; margin-top:4px; }
 
-  /* Inputs */
   input[type="search"], input[type="text"], select, input[type="number"], input[type="date"]{
     border:1px solid #ccc; border-radius:10px; padding:8px 10px; width:140px; min-width:120px; outline:none; background:#fff;
   }
@@ -108,11 +106,14 @@
   .field.periodNames > label{ margin-bottom:8px; display:block; }
   #skipRows .skipRow{ display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin:6px 0; }
 
-  /* Minimal clickable subject */
   .subjectLink{display:inline-block}
   .subjectLink .muted{border-bottom:1px dotted #d1d5db;}
   .subjectLink[data-clickable="true"]{cursor:pointer;}
   .subjectLink[data-clickable="true"]:hover .muted{color:#333}
+
+  /* Inline search bar inside results */
+  .inlineSearch{display:flex; gap:8px; align-items:center; padding:8px 12px; background:#fbfbfb; border-bottom:1px solid #efefef}
+  .inlineSearch input{width:220px}
 </style>
 </head>
 <body>
@@ -296,7 +297,7 @@ function saveLinksFor(cfg, linksObj){
   localStorage.setItem(LS_KEY_LINKS, JSON.stringify(all));
 }
 
-/* === Google auth helpers === */
+/* === Google auth === */
 let tokenClient = null; let gapiReady = false; let refreshTimer = null;
 
 async function loadGapiClient(){
@@ -312,9 +313,7 @@ async function initAuth(){
     client_id: GOOGLE.CLIENT_ID,
     scope: GOOGLE.SCOPES,
     callback: async (resp) => {
-      if (resp && resp.error) {
-        alert("Sign-in failed: " + (resp.error_description || resp.error)); return;
-      }
+      if (resp && resp.error) { alert("Sign-in failed: " + (resp.error_description || resp.error)); return; }
       gapi.client.setToken({ access_token: resp.access_token });
       GOOGLE.authed = true;
       try {
@@ -376,6 +375,19 @@ function updateAuthUi(){
 }
 
 /* === Drive/Slides helpers === */
+async function listSlidesInFolder(folderId){
+  await ensureSignedIn();
+  const q = [
+    "mimeType='application/vnd.google-apps.presentation'",
+    "trashed=false",
+    `'${folderId}' in parents`
+  ].join(" and ");
+  const res = await gapi.client.drive.files.list({
+    q, pageSize: 20, orderBy: "modifiedTime desc",
+    fields: "files(id,name,modifiedTime,webViewLink)"
+  });
+  return res.result.files || [];
+}
 async function searchSlides(hint, folderId){
   await ensureSignedIn();
   const clauses = [
@@ -385,16 +397,27 @@ async function searchSlides(hint, folderId){
     folderId ? `'${folderId}' in parents` : null
   ].filter(Boolean);
   const q = clauses.join(" and ");
-  const res = await gapi.client.drive.files.list({ q, pageSize:10, fields:"files(id,name,modifiedTime,webViewLink)" });
+  const res = await gapi.client.drive.files.list({
+    q, pageSize: 20, orderBy: "modifiedTime desc",
+    fields: "files(id,name,modifiedTime,webViewLink)"
+  });
   return res.result.files || [];
 }
 async function searchFolders(term){
   await ensureSignedIn();
-  const q = ["mimeType='application/vnd.google-apps.folder'","trashed=false", term?`name contains '${term.replace(/'/g,"\\'")}'`:null].filter(Boolean).join(" and ");
-  const res = await gapi.client.drive.files.list({ q, pageSize:10, fields:"files(id,name)" });
+  const q = [
+    "mimeType='application/vnd.google-apps.folder'",
+    "trashed=false",
+    term ? `name contains '${term.replace(/'/g,"\\'")}'` : null
+  ].filter(Boolean).join(" and ");
+  const res = await gapi.client.drive.files.list({
+    q, pageSize: 10, fields: "files(id,name)"
+  });
   return res.result.files || [];
 }
-function slideLink(fileId, pageObjectId){ return `https://docs.google.com/presentation/d/${fileId}/edit#slide=id.${pageObjectId}`; }
+function slideLink(fileId, pageObjectId){
+  return `https://docs.google.com/presentation/d/${fileId}/edit#slide=id.${pageObjectId}`;
+}
 function titleFromSlide(slide, index){
   const elems = slide.pageElements || [];
   for(const el of elems){
@@ -460,7 +483,7 @@ function chooseDisplayWeek(weeks, now=new Date()){
 function weekActualLabel(w){ return formatRangeFull(w.monday, w.friday); }
 function headerActualLabel(cfg){ return `${cfg.semester || "Semester"} ${cfg.year || "Year"}`; }
 
-/* Minimal subject cell: dblclick to attach */
+/* Render a week table: minimal subject cell with dblclick picker */
 function renderWeekTable(cfg, w, links){
   const table=document.createElement("table"); table.className="grid";
   const thead=document.createElement("thead"); const trh=document.createElement("tr");
@@ -483,11 +506,8 @@ function renderWeekTable(cfg, w, links){
 
   cfg.periods.forEach((periodLabel,idx)=>{
     const td=document.createElement("td");
-
-    // Conference period (blank label)
     if(!periodLabel){ td.innerHTML=`<div class="muted">Conference</div>`; tr.appendChild(td); return; }
 
-    // Build subject view (link if saved, muted text otherwise)
     const saved = links?.[w.n]?.[idx];
     const subjectWrap = document.createElement("div");
     subjectWrap.className = "subjectLink";
@@ -500,64 +520,132 @@ function renderWeekTable(cfg, w, links){
       subjectWrap.innerHTML = `<span class="muted">${periodLabel}</span><div class="dblHint">double-click to link</div>`;
     }
 
-    // Container for minimal chooser results (appears only on dblclick)
     const results = document.createElement("div");
     results.className = "results";
     results.style.display = "none";
 
-    // Dbl-click handler: search & choose file/slide
+    function renderFileRows(files){
+      if(!files.length){
+        results.innerHTML = `<div class="resultItem"><em>No matches found.</em></div>`;
+        return;
+      }
+      const frag = document.createDocumentFragment();
+      files.forEach(f=>{
+        const row=document.createElement("div"); row.className="resultItem";
+        const left=document.createElement("div");
+        left.innerHTML = `<div><strong>${f.name}</strong></div><small>Last modified ${new Date(f.modifiedTime).toLocaleDateString()}</small>`;
+        const pick=document.createElement("button"); pick.className="btn"; pick.textContent="Select";
+        row.appendChild(left); row.appendChild(pick);
+        pick.addEventListener("click", async ()=>{
+          pick.disabled=true; pick.textContent="Loading slides…";
+          try{
+            const pres = await gapi.client.slides.presentations.get({ presentationId: f.id });
+            const slides = pres.result.slides || [];
+            const nested = document.createElement("div"); nested.className="slidesList";
+            if(!slides.length){ nested.innerHTML = `<div class="slideRow"><span class="slideTitle">No slides found</span></div>`; }
+            else{
+              slides.forEach((s,i)=>{
+                const sr=document.createElement("div"); sr.className="slideRow";
+                const img=document.createElement("img"); img.className="thumb skel"; img.alt="Slide thumbnail"; img.loading="lazy";
+                const meta=document.createElement("div"); const human=titleFromSlide(s,i);
+                meta.innerHTML=`<div class="slideTitle">${human}</div><div class="slideMeta">#${i+1}</div>`;
+                const chooseBtn=document.createElement("button"); chooseBtn.className="choose"; chooseBtn.textContent="Choose";
+                chooseBtn.addEventListener("click", ()=>{
+                  const all=loadLinksFor(cfg); all[w.n]??={};
+                  all[w.n][idx] = { id:f.id, name:f.name, slideId:s.objectId, url:f.webViewLink };
+                  saveLinksFor(cfg, all);
+                  subjectWrap.innerHTML = `<a class="link" href="${slideLink(f.id, s.objectId)}" target="_blank" rel="noopener">${periodLabel}</a>`;
+                  results.style.display="none";
+                });
+                sr.appendChild(img); sr.appendChild(meta); sr.appendChild(chooseBtn); nested.appendChild(sr);
+                (async ()=>{ const url=await getSlideThumb(f.id, s.objectId); if(url){ img.src=url; img.classList.remove("skel"); } })();
+              });
+            }
+            row.insertAdjacentElement("afterend", nested);
+            pick.textContent="Slides loaded";
+            setTimeout(()=>{ pick.textContent="Select"; pick.disabled=false; }, 800);
+          }catch(e){
+            pick.textContent="Select"; pick.disabled=false;
+            alert("Failed to load slides: " + (e.result?.error?.message || e.message || e));
+          }
+        });
+        frag.appendChild(row);
+      });
+      results.appendChild(frag);
+    }
+
     subjectWrap.addEventListener("dblclick", async ()=>{
       try{
         await ensureSignedIn();
         results.style.display="block";
-        results.innerHTML = `<div class="resultItem"><em>Searching slides for “${periodLabel}”…</em></div>`;
-        const folderId = (loadCfg().periodFolders || [])[idx] || "";
-        const files = await searchSlides(periodLabel || `Week ${w.n}`, folderId);
-        if(!files.length){ results.innerHTML = `<div class="resultItem"><em>No matches found.</em></div>`; return; }
         results.innerHTML = "";
-        files.forEach(f=>{
-          const row=document.createElement("div"); row.className="resultItem";
-          const left=document.createElement("div");
-          left.innerHTML = `<div><strong>${f.name}</strong></div><small>Last modified ${new Date(f.modifiedTime).toLocaleDateString()}</small>`;
-          const pick=document.createElement("button"); pick.className="btn"; pick.textContent="Select";
-          row.appendChild(left); row.appendChild(pick); results.appendChild(row);
 
-          pick.addEventListener("click", async ()=>{
-            pick.disabled=true; pick.textContent="Loading slides…";
-            try{
-              const pres = await gapi.client.slides.presentations.get({ presentationId: f.id });
-              const slides = pres.result.slides || [];
-              const nested = document.createElement("div"); nested.className="slidesList";
-              if(!slides.length){ nested.innerHTML = `<div class="slideRow"><span class="slideTitle">No slides found</span></div>`; }
-              else{
-                slides.forEach((s,i)=>{
-                  const sr=document.createElement("div"); sr.className="slideRow";
-                  const img=document.createElement("img"); img.className="thumb skel"; img.alt="Slide thumbnail"; img.loading="lazy";
-                  const meta=document.createElement("div"); const human=titleFromSlide(s,i);
-                  meta.innerHTML=`<div class="slideTitle">${human}</div><div class="slideMeta">#${i+1}</div>`;
-                  const chooseBtn=document.createElement("button"); chooseBtn.className="choose"; chooseBtn.textContent="Choose";
-                  chooseBtn.addEventListener("click", ()=>{
-                    const all=loadLinksFor(cfg); all[w.n]??={};
-                    all[w.n][idx] = { id:f.id, name:f.name, slideId:s.objectId, url:f.webViewLink };
-                    saveLinksFor(cfg, all);
+        // Inline search bar (always visible)
+        const bar = document.createElement("div"); bar.className="inlineSearch";
+        const qInput = document.createElement("input");
+        qInput.type = "search";
+        qInput.placeholder = `Type to search… (e.g., ${periodLabel})`;
+        const btnInFolder = document.createElement("button"); btnInFolder.className="btn"; btnInFolder.textContent="Search in this folder";
+        const btnAllDrive = document.createElement("button"); btnAllDrive.className="btn secondary"; btnAllDrive.textContent="Search all Drive";
+        bar.appendChild(qInput); bar.appendChild(btnInFolder); bar.appendChild(btnAllDrive);
+        results.appendChild(bar);
 
-                    // Replace subject muted/link with link to chosen slide
-                    subjectWrap.innerHTML = `<a class="link" href="${slideLink(f.id, s.objectId)}" target="_blank" rel="noopener">${periodLabel}</a>`;
-                    results.style.display="none";
-                  });
-                  sr.appendChild(img); sr.appendChild(meta); sr.appendChild(chooseBtn); nested.appendChild(sr);
-                  (async ()=>{ const url=await getSlideThumb(f.id, s.objectId); if(url){ img.src=url; img.classList.remove("skel"); } })();
-                });
-              }
-              row.insertAdjacentElement("afterend", nested);
-              pick.textContent="Slides loaded";
-              setTimeout(()=>{ pick.textContent="Select"; pick.disabled=false; }, 800);
-            }catch(e){
-              pick.textContent="Select"; pick.disabled=false;
-              alert("Failed to load slides: " + (e.result?.error?.message || e.message || e));
-            }
-          });
+        const folderId = (loadCfg().periodFolders || [])[idx] || "";
+
+        // Initial listing logic:
+        if(folderId){
+          const header = document.createElement("div");
+          header.className = "resultItem";
+          header.innerHTML = `<em>Showing all decks in the selected folder (newest first)…</em>`;
+          results.appendChild(header);
+          const files = await listSlidesInFolder(folderId);
+          renderFileRows(files);
+        }else{
+          const header = document.createElement("div");
+          header.className = "resultItem";
+          header.innerHTML = `<em>No folder set. Searching Drive for “${periodLabel}” …</em>`;
+          results.appendChild(header);
+          const files = await searchSlides(periodLabel, "");
+          renderFileRows(files);
+        }
+
+        btnInFolder.addEventListener("click", async ()=>{
+          results.innerHTML = "";
+          results.appendChild(bar);
+          const header = document.createElement("div");
+          header.className = "resultItem";
+          if(!folderId){
+            header.innerHTML = `<em>No folder set for this period. Showing Drive results for “${qInput.value.trim()||periodLabel}”.</em>`;
+            results.appendChild(header);
+            const files = await searchSlides(qInput.value.trim()||periodLabel, "");
+            renderFileRows(files);
+          }else{
+            header.innerHTML = `<em>Searching in folder for “${qInput.value.trim()||"*"}” …</em>`;
+            results.appendChild(header);
+            const term = qInput.value.trim();
+            const files = term ? await searchSlides(term, folderId) : await listSlidesInFolder(folderId);
+            renderFileRows(files);
+          }
         });
+
+        btnAllDrive.addEventListener("click", async ()=>{
+          results.innerHTML = "";
+          results.appendChild(bar);
+          const header = document.createElement("div");
+          header.className = "resultItem";
+          header.innerHTML = `<em>Searching all Drive for “${qInput.value.trim()||periodLabel}” …</em>`;
+          results.appendChild(header);
+          const files = await searchSlides(qInput.value.trim()||periodLabel, "");
+          renderFileRows(files);
+        });
+
+        qInput.addEventListener("keydown", async (e)=>{
+          if(e.key === "Enter"){
+            e.preventDefault();
+            btnInFolder.click(); // default to in-folder search if folder exists; otherwise Drive-wide message handles it
+          }
+        });
+
       }catch(err){
         results.style.display="block";
         results.innerHTML = `<div class="resultItem"><em>Error: ${err.message||err}</em></div>`;
@@ -569,7 +657,7 @@ function renderWeekTable(cfg, w, links){
     tr.appendChild(td);
   });
 
-  // NOTES: dbl-click to edit, Enter to save
+  // NOTES cell (dblclick to edit, Enter to save)
   const tNotes=document.createElement("td");
   const linksForWeek=links?.[w.n] || {};
   const savedNotes=typeof linksForWeek.notes==="string" ? linksForWeek.notes : "*Agendas\n*Lessons\n*Grades\n*e-Calendar\n*Announcements\n*Services";
@@ -638,7 +726,7 @@ function renderAll(){
   }
 }
 
-/* === Settings UI (unchanged except for green primary) === */
+/* === Settings / UI wiring === */
 const modal=document.getElementById("settingsModal");
 const openSettings=document.getElementById("openSettings");
 const closeSettings=document.getElementById("closeSettings");
@@ -720,7 +808,6 @@ function collectSkipRows(){
   rows.forEach(r=>{ const [fromInp,toInp]=r.querySelectorAll("input"); const from=fromInp?.value||""; const to=toInp?.value||""; if(from&&to) out.push({from,to}); });
   return out;
 }
-
 function setFolderCollapsed(collapsed){ const expanded=!collapsed; folderToggle.setAttribute("aria-expanded", String(expanded)); folderChooserWrap.style.display=expanded?"block":"none"; }
 folderToggle.addEventListener("click",()=> setFolderCollapsed(folderChooserWrap.style.display!=="none"));
 folderToggle.addEventListener("keydown",(e)=>{ if(e.key===" "||e.key==="Enter"){ e.preventDefault(); setFolderCollapsed(folderChooserWrap.style.display!=="none"); } });
@@ -773,7 +860,7 @@ document.getElementById("saveSettings").addEventListener("click", async ()=>{
 document.getElementById("authBtn").addEventListener("click", async ()=>{ try{ await ensureSignedIn(); }catch(err){ alert("Sign-in failed: "+(err.error||err.message||err)); } });
 document.getElementById("signoutBtn").addEventListener("click", async ()=>{ await signOut(); });
 
-/* Gist silent sync (kept from earlier) */
+/* Gist silent sync (kept) */
 function loadGh(){ try{ return JSON.parse(localStorage.getItem(LS_KEY_GH)||"{}"); }catch{ return {}; } }
 function saveGh(obj){ localStorage.setItem(LS_KEY_GH, JSON.stringify(obj)); }
 async function gistRequest(method, path, body, token){
@@ -788,7 +875,7 @@ async function silentSaveToGistIfConfigured(){
   else { const created=await gistRequest("POST",`/gists`,{description:"Weekly Agendas — sync", public:false, files},token); if(created && created.id){ saveGh({token,gistId:created.id}); } }
 }
 
-/* Auto rerender each minute in case week turns over at midnight Saturday */
+/* Tick every minute for Saturday rollover */
 setInterval(()=>{ renderAll(); }, 60*1000);
 
 /* Init */
