@@ -17,6 +17,8 @@
   .btn.secondary{border-color:#ddd;background:#fafafa;color:#222}
   .btn.ghost{border:1px dashed var(--border); background:#fff; color:#333}
   .btn.warn{border-color:#f59e0b;background:#fff7ed;color:#8a4b00}
+  /* New green success style for the Settings primary action */
+  .btn.success{border-color:#10b981;background:#ecfdf5;color:#065f46}
   .btn:disabled{opacity:.55; cursor:not-allowed}
   .pill{font-size:12px; border:1px solid #ddd; padding:2px 8px; border-radius:999px; color:#333; background:#fafafa}
 
@@ -56,7 +58,8 @@
   input::placeholder{ color:#888; }
   input:focus, select:focus{border-color:var(--ring); box-shadow:0 0 0 3px #1697bb33}
 
-  /* (Removed the stretch rule so Semester & Year are compact again) */
+  /* Make Year fit its content (override the generic 140px width) */
+  #yearInput{ width:6.5ch; min-width:5.5ch; max-width:8ch; }
 
   .results{margin-top:8px; border:1px solid #e5e5e5; border-radius:10px; overflow:hidden}
   .resultItem{padding:10px 12px; border-top:1px solid #efefef; display:flex; justify-content:space-between; align-items:center; gap:12px}
@@ -236,7 +239,8 @@
         <button id="loadBaseline" class="btn secondary">Load Baseline</button>
       </div>
       <div class="row">
-        <button id="saveSettings" class="btn">Save & Regenerate</button>
+        <!-- Label changed and green style applied -->
+        <button id="saveSettings" class="btn success">Save &amp; Generate</button>
       </div>
     </footer>
   </div>
