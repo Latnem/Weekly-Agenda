@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Weekly Agendas — Master Template (Folders per Period)</title>
+<title>Weekly Agendas — Master Template (GIS + Silent Auth + Remember Email)</title>
 <style>
   :root{ --ink:#111; --muted:#666; --link:#2166c2; --ring:#1697BB; --bg:#fff; --border:#e5e7eb; }
   html,body{font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial; color:var(--ink); background:#fff; margin:0}
@@ -116,7 +116,7 @@
   <div class="modal">
     <header>
       <h2 id="settingsTitle">Weekly Agenda Settings</h2>
-    <button id="closeSettings" class="iconBtn" title="Close">
+      <button id="closeSettings" class="iconBtn" title="Close">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <path d="M18 6 6 18M6 6l12 12"/>
         </svg>
@@ -189,8 +189,9 @@
 <!-- Google APIs -->
 <script src="https://apis.google.com/js/api.js"></script>
 <script src="https://accounts.google.com/gsi/client" async defer></script>
+
 <script>
-/* ===== Google config (keep your keys) ===== */
+/* ===== Google config (your keys) ===== */
 const GOOGLE = {
   API_KEY: "AIzaSyDWnOao76tK1ecBGfL21ZLxBDvChqlGrx0",
   CLIENT_ID: "462034083093-75pc8bgfieivcrkc6275vgahg44qhvvh.apps.googleusercontent.com",
@@ -201,27 +202,30 @@ const GOOGLE = {
   SCOPES: "https://www.googleapis.com/auth/drive.readonly https://www.googleapis.com/auth/presentations.readonly",
   authed: false,
 };
-let tokenClient = null;
-let gapiReady = false;
 
-/* ===== Storage keys & defaults ===== */
-const LS_KEY_LINKS = "agenda_links_by_semester";
-const LS_KEY_CFG   = "agenda_master_template_neutral_v1";
-const LS_KEY_BASELINE = "agenda_master_baseline_v1";
-const LS_KEY_GH = "agenda_github_sync_v1";
+/* ===== LocalStorage keys & defaults ===== */
+const LS_KEY_LINKS   = "agenda_links_by_semester";
+const LS_KEY_CFG     = "agenda_master_template_neutral_v1";
+const LS_KEY_BASELINE= "agenda_master_baseline_v1";
+const LS_KEY_GH      = "agenda_github_sync_v1";
+const LS_KEY_AUTH    = "agenda_auth_meta_v1"; // { email?: string, granted: boolean }
 
 const NEUTRAL_CFG = {
   semester: "",
   year: "",
   periods: ["","","","","",""],
-  periodFolders: ["","","","","",""], // NEW: folder IDs per period
+  periodFolders: ["","","","","",""], // folder IDs per period
   firstMonday: "",
   lastFriday: "",
   skipWeeks: [],
   labelsFinalized: false
 };
 
-/* ===== Utils ===== */
+/* ===== Auth metadata helpers ===== */
+function saveAuthMeta(m){ localStorage.setItem(LS_KEY_AUTH, JSON.stringify(m||{})); }
+function loadAuthMeta(){ try { return JSON.parse(localStorage.getItem(LS_KEY_AUTH)||"{}"); } catch { return {}; } }
+
+/* ===== Date helpers ===== */
 const dayMs = 24*60*60*1000;
 function toDateAtMidnight(s){ if(!s) return null; const [y,m,d]=s.split("-").map(Number); return new Date(y,m-1,d,0,0,0,0); }
 function addDays(date,n){ const d=new Date(date); d.setDate(d.getDate()+n); return d; }
@@ -236,6 +240,8 @@ function formatRangeFull(a,b){
     return `${fmtMonthLong(a)} ${fmtDay(a)}–${fmtMonthLong(b)} ${fmtDay(b)}`;
   }
 }
+
+/* ===== Config persistence ===== */
 function saveBaselineCfg(cfg){ localStorage.setItem(LS_KEY_BASELINE, JSON.stringify(cfg)); }
 function loadBaselineCfg(){ try{ return JSON.parse(localStorage.getItem(LS_KEY_BASELINE) || "null"); }catch{ return null; } }
 function loadCfg(){ const raw = localStorage.getItem(LS_KEY_CFG); if(!raw) return {...NEUTRAL_CFG};
@@ -257,7 +263,7 @@ function saveLinksFor(cfg, linksObj){
   localStorage.setItem(LS_KEY_LINKS, JSON.stringify(all));
 }
 
-/* ===== Weeks (Mon–Fri) ===== */
+/* ===== Build Mon–Fri weeks ===== */
 function buildWeeks(cfg){
   const startRaw = toDateAtMidnight(cfg.firstMonday);
   const endRaw   = toDateAtMidnight(cfg.lastFriday);
@@ -281,7 +287,7 @@ function buildWeeks(cfg){
   return weeks;
 }
 
-/* ===== Auto-advance Saturday 00:00 ===== */
+/* ===== Choose current week (auto-advance Sat 00:00) ===== */
 function chooseDisplayWeek(weeks, now=new Date()){
   if(!weeks.length) return { week:null, idx:-1 };
   const mon = mondayOf(now);
@@ -294,49 +300,120 @@ function chooseDisplayWeek(weeks, now=new Date()){
   return { week: weeks[idx], idx };
 }
 
-/* ===== Google APIs auth (GIS) ===== */
+/* ===== Google APIs: gapi client + GIS token (silent reauth + remember email) ===== */
+let tokenClient = null;
+let gapiReady = false;
+let refreshTimer = null;
+
 function updateAuthUi(){
   document.getElementById("authState").innerHTML =
     "Drive: <strong>"+(GOOGLE.authed?"signed in":"signed out")+"</strong>";
   document.getElementById("signoutBtn").disabled = !GOOGLE.authed;
 }
+
 async function loadGapiClient(){
   if (gapiReady) return;
   await new Promise(r => gapi.load("client", r));
   await gapi.client.init({ apiKey: GOOGLE.API_KEY, discoveryDocs: GOOGLE.DISCOVERY_DOCS });
   gapiReady = true;
 }
+
 async function initAuth(){
   await loadGapiClient();
+  if (tokenClient) return tokenClient;
   tokenClient = google.accounts.oauth2.initTokenClient({
     client_id: GOOGLE.CLIENT_ID,
     scope: GOOGLE.SCOPES,
-    callback: (resp) => {
+    callback: async (resp) => {
       if (resp && resp.error) {
         console.error("GIS token error:", resp);
         alert("Sign-in failed: " + (resp.error_description || resp.error));
         return;
       }
+      // Token acquired
       gapi.client.setToken({ access_token: resp.access_token });
       GOOGLE.authed = true; updateAuthUi();
+
+      // Always remember account email for future login_hint
+      try {
+        const about = await gapi.client.drive.about.get({ fields: "user(emailAddress)" });
+        const emailHint = about?.result?.user?.emailAddress || "";
+        saveAuthMeta({ email: emailHint, granted: true });
+      } catch(e){
+        const prev = loadAuthMeta();
+        saveAuthMeta({ email: prev.email || "", granted: true });
+      }
     }
   });
-}
-async function ensureSignedIn(){
-  if (!window.google || !window.gapi) { alert("Google libraries not loaded yet. Try again in a second."); return; }
-  if (!tokenClient) await initAuth();
-  const tok = gapi.client.getToken?.();
-  if (tok && tok.access_token) { GOOGLE.authed = true; updateAuthUi(); return true; }
-  tokenClient.requestAccessToken({ prompt: "consent" });
-  return true;
-}
-async function signOut(){
-  const tok = gapi.client.getToken?.();
-  if (tok && tok.access_token) { try { google.accounts.oauth2.revoke(tok.access_token); } catch(e){} }
-  gapi.client.setToken(null); GOOGLE.authed = false; updateAuthUi();
+  return tokenClient;
 }
 
-/* ===== Drive search helpers ===== */
+/* Try silent sign-in (no popup). Returns true if token present. */
+async function trySilentSignIn(){
+  await initAuth();
+  const meta = loadAuthMeta();
+  try {
+    tokenClient.requestAccessToken({
+      prompt: "",                           // silent mode
+      login_hint: meta.email || undefined,  // stick to same account if known
+    });
+    // Wait briefly to see if token was set by callback
+    return await new Promise(resolve => {
+      const start = Date.now();
+      const check = () => {
+        const tok = gapi.client.getToken?.();
+        if (tok && tok.access_token) return resolve(true);
+        if (Date.now() - start > 1500) return resolve(false);
+        setTimeout(check, 50);
+      };
+      check();
+    });
+  } catch(e) {
+    return false;
+  }
+}
+
+/* Interactive sign-in (opens popup if needed) */
+async function ensureSignedIn(){
+  if (!window.google || !window.gapi) { alert("Google libraries not loaded yet. Try again in a second."); return; }
+  await initAuth();
+
+  const tok = gapi.client.getToken?.();
+  if (tok && tok.access_token) { GOOGLE.authed = true; updateAuthUi(); return true; }
+
+  const meta = loadAuthMeta();
+  tokenClient.requestAccessToken({
+    prompt: "consent",
+    login_hint: meta.email || undefined,
+  });
+  return true;
+}
+
+/* Sign out: revoke local token and clear granted flag (keep or wipe email – here we keep it) */
+async function signOut(){
+  const tok = gapi.client.getToken?.();
+  if (tok && tok.access_token) {
+    try { google.accounts.oauth2.revoke(tok.access_token); } catch(e){}
+  }
+  gapi.client.setToken(null);
+  GOOGLE.authed = false; updateAuthUi();
+  const meta = loadAuthMeta();
+  // keep email for next time; just mark not granted so we won't try silent until they connect again
+  saveAuthMeta({ email: meta.email || "", granted: false });
+}
+
+/* Background silent refresh every 45 minutes */
+function scheduleSilentRefresh(){
+  if (refreshTimer) clearInterval(refreshTimer);
+  refreshTimer = setInterval(async ()=>{
+    const meta = loadAuthMeta();
+    if (!meta.granted) return;
+    const ok = await trySilentSignIn();
+    if (ok) { GOOGLE.authed = true; updateAuthUi(); }
+  }, 45 * 60 * 1000);
+}
+
+/* ===== Drive search + Slides helpers ===== */
 async function searchSlides(hint, folderId){
   await ensureSignedIn();
   const clauses = [
@@ -401,7 +478,7 @@ async function getSlideThumb(presentationId, pageObjectId){
 function weekActualLabel(w){ return formatRangeFull(w.monday, w.friday); }
 function headerActualLabel(cfg){ return `${cfg.semester || "Semester"} ${cfg.year || "Year"}`; }
 
-/* ===== Render agenda week ===== */
+/* ===== Render one week ===== */
 function renderWeekTable(cfg, w, links){
   const table = document.createElement("table"); table.className="grid";
   const thead = document.createElement("thead"); const trh = document.createElement("tr");
@@ -517,7 +594,7 @@ function renderWeekTable(cfg, w, links){
   return table;
 }
 
-/* ===== Render whole page ===== */
+/* ===== Render entire page ===== */
 function renderAll(){
   const cfg = loadCfg(); const links = loadLinksFor(cfg);
   const hasConfig = !!cfg.semester && !!cfg.year && !!cfg.firstMonday && !!cfg.lastFriday;
@@ -561,7 +638,7 @@ function renderAll(){
   }
 }
 
-/* ===== Gist sync (unchanged) ===== */
+/* ===== Gist sync (optional) ===== */
 function loadGh(){ try{ return JSON.parse(localStorage.getItem(LS_KEY_GH)||"{}"); }catch{ return {}; } }
 function saveGh(obj){ localStorage.setItem(LS_KEY_GH, JSON.stringify(obj)); }
 async function gistRequest(method, path, body, token){
@@ -736,7 +813,7 @@ function openModal(){
 
   // temp folder state = current config
   tempFolderIds = [...(cfg.periodFolders || ["","","","","",""])];
-  tempFolderNames = ["","","","","",""]; // names are only for display; optional
+  tempFolderNames = ["","","","","",""];
   renderFolderChoosers(cfg);
 
   const gh = loadGh(); ghTokenInp.value = gh.token || ""; ghGistIdInp.value = gh.gistId || "";
@@ -770,7 +847,7 @@ saveSettings.addEventListener("click", ()=>{
     semester: semesterSel.value || "",
     year: (yearInput.value || "").trim(),
     periods,
-    periodFolders: tempFolderIds, // save selected folder IDs
+    periodFolders: tempFolderIds,
     firstMonday: firstMondayInp.value || "",
     lastFriday:  lastFridayInp.value  || "",
     skipWeeks: collectSkipRows(),
@@ -779,7 +856,7 @@ saveSettings.addEventListener("click", ()=>{
   saveCfg(next); closeModal(); renderAll();
 });
 
-/* ===== Auth button wiring ===== */
+/* ===== Auth buttons ===== */
 document.getElementById("authBtn").addEventListener("click", async ()=>{
   try{ await ensureSignedIn(); }catch(err){ console.error(err); alert("Sign-in failed: "+(err.error||err.message||err)); }
 });
@@ -788,9 +865,19 @@ document.getElementById("signoutBtn").addEventListener("click", async ()=>{ awai
 /* Re-render periodically to catch rollover */
 setInterval(()=>{ renderAll(); }, 60*1000);
 
-/* Boot */
-(function initOnLoad(){
-  if(!localStorage.getItem(LS_KEY_CFG)){ saveCfg({...NEUTRAL_CFG}); }
+/* ===== Boot: silent sign-in, schedule background refresh, then render ===== */
+(async function initOnLoad(){
+  if(!localStorage.getItem(LS_KEY_CFG)) saveCfg({...NEUTRAL_CFG});
+
+  try {
+    const meta = loadAuthMeta();
+    if (meta.granted) {
+      const ok = await trySilentSignIn();
+      if (ok) { GOOGLE.authed = true; updateAuthUi(); }
+    }
+  } catch(e) { /* ignore */ }
+
+  scheduleSilentRefresh();
   renderAll();
 })();
 </script>
