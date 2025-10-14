@@ -78,15 +78,20 @@
   .field label{font-size:13px; color:#333}
   .row{display:flex; gap:12px; align-items:center; flex-wrap:wrap}
 
-  /* NEW: two-column period labels */
+  /* Two-column period labels (fixed) */
   .twoCols{display:grid; grid-template-columns:1fr 1fr; gap:16px; align-items:start}
   .periodCol{display:flex; flex-direction:column; gap:10px}
-  .pRow{display:grid; grid-template-columns:90px 1fr; align-items:center; gap:8px}
-  .pRow label{font-size:13px; color:#333}
+  .periodCol.right{margin-left:12px;}               /* small nudge right */
+  .pRow{display:grid; grid-template-columns:120px 1fr; align-items:center; gap:10px;} /* wider label column */
+  .pRow label{font-size:13px; color:#333; white-space:nowrap;}
 
   .folderRow{display:grid; grid-template-columns: 100px 1fr auto; gap:10px; align-items:center}
   .folderBadge{display:inline-flex; align-items:center; gap:8px; padding:4px 10px; border:1px solid #d1d5db; border-radius:999px; background:#f8fafc; font-size:12px}
   .folderBadge code{font-family:ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono"; font-size:11px; color:#334155}
+  /* Button spacing in folder row */
+  .folderRow input.long{margin-right:8px;}
+  .folderRow .btn{margin-right:8px;}
+
   .modal footer{padding:14px 16px; border-top:1px solid var(--border); display:flex; justify-content:space-between; align-items:center; gap:8px; flex-wrap:wrap}
 </style>
 </head>
@@ -97,7 +102,7 @@
     <button id="openSettings" class="iconBtn" title="Customize master template">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
         <path d="M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8Z"/>
-        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06A2 2 0 1 1 3.2 17l.06-.06A1.65 1.65 0 0 0 3.59 15a1.65 1.65 0 0 0-1.51-1H2a2 2 0 1 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06A2 2 0 1 1 6.04 2.2l.06.06A1.65 1.65 0 0 0 7.92 2h.18A1.65 1.65 0 0 0 9.6 3.59 1.65 1.65 0 0 0 11 5.1V5a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06A2 2 0 1 1 21.8 6.04l-.06.06A1.65 1.65 0 0 0 21.41 7.9 1.65 1.65 0 0 0 23 9.6v.18A1.65 1.65 0 0 0 21.41 11H21a1.65 1.65 0 0 0-1.6 2Z"/>
+        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06A2 2 0 1 1 3.2 17l.06-.06A2 2 0 0 0 3.59 15a1.65 1.65 0 0 0-1.51-1H2a2 2 0 1 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06A2 2 0 1 1 6.04 2.2l.06.06A1.65 1.65 0 0 0 7.92 2h.18A1.65 1.65 0 0 0 9.6 3.59 1.65 1.65 0 0 0 11 5.1V5a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06A2 2 0 1 1 21.8 6.04l-.06.06A1.65 1.65 0 0 0 21.41 7.9 1.65 1.65 0 0 0 23 9.6v.18A1.65 1.65 0 0 0 21.41 11H21a1.65 1.65 0 0 0-1.6 2Z"/>
       </svg>
       Settings
     </button>
@@ -337,11 +342,8 @@ async function initAuth(){
         alert("Sign-in failed: " + (resp.error_description || resp.error));
         return;
       }
-      // Token acquired
       gapi.client.setToken({ access_token: resp.access_token });
       GOOGLE.authed = true; updateAuthUi();
-
-      // Always remember account email for future login_hint
       try {
         const about = await gapi.client.drive.about.get({ fields: "user(emailAddress)" });
         const emailHint = about?.result?.user?.emailAddress || "";
@@ -355,16 +357,14 @@ async function initAuth(){
   return tokenClient;
 }
 
-/* Try silent sign-in (no popup). Returns true if token present. */
 async function trySilentSignIn(){
   await initAuth();
   const meta = loadAuthMeta();
   try {
     tokenClient.requestAccessToken({
-      prompt: "",                           // silent mode
-      login_hint: meta.email || undefined,  // stick to same account if known
+      prompt: "",
+      login_hint: meta.email || undefined,
     });
-    // Wait briefly to see if token was set by callback
     return await new Promise(resolve => {
       const start = Date.now();
       const check = () => {
@@ -375,28 +375,19 @@ async function trySilentSignIn(){
       };
       check();
     });
-  } catch(e) {
-    return false;
-  }
+  } catch(e) { return false; }
 }
 
-/* Interactive sign-in (opens popup if needed) */
 async function ensureSignedIn(){
   if (!window.google || !window.gapi) { alert("Google libraries not loaded yet. Try again in a second."); return; }
   await initAuth();
-
   const tok = gapi.client.getToken?.();
   if (tok && tok.access_token) { GOOGLE.authed = true; updateAuthUi(); return true; }
-
   const meta = loadAuthMeta();
-  tokenClient.requestAccessToken({
-    prompt: "consent",
-    login_hint: meta.email || undefined,
-  });
+  tokenClient.requestAccessToken({ prompt: "consent", login_hint: meta.email || undefined });
   return true;
 }
 
-/* Sign out: revoke local token and clear granted flag (keep or wipe email – here we keep it) */
 async function signOut(){
   const tok = gapi.client.getToken?.();
   if (tok && tok.access_token) {
@@ -405,11 +396,9 @@ async function signOut(){
   gapi.client.setToken(null);
   GOOGLE.authed = false; updateAuthUi();
   const meta = loadAuthMeta();
-  // keep email for next time; just mark not granted so we won't try silent until they connect again
   saveAuthMeta({ email: meta.email || "", granted: false });
 }
 
-/* Background silent refresh every 45 minutes */
 function scheduleSilentRefresh(){
   if (refreshTimer) clearInterval(refreshTimer);
   refreshTimer = setInterval(async ()=>{
@@ -726,13 +715,12 @@ const gistLoadBtn = document.getElementById("gistLoad");
 let tempFolderIds = ["","","","","",""];
 let tempFolderNames = ["","","","","",""];
 
-/* UPDATED: render the two-column Period inputs */
+/* Period inputs two-column render */
 function fillPeriodInputs(periods){
   periodInputsWrap.innerHTML = "";
   const left = document.createElement("div");  left.className = "periodCol";
-  const right = document.createElement("div"); right.className = "periodCol";
+  const right = document.createElement("div"); right.className = "periodCol right";
 
-  // Helper to add a row
   const addRow = (col, idx) => {
     const row = document.createElement("div"); row.className="pRow";
     const lab = document.createElement("label"); lab.textContent = `Period ${idx+1}`; lab.setAttribute("for", `p${idx}`);
@@ -740,7 +728,6 @@ function fillPeriodInputs(periods){
     row.appendChild(lab); row.appendChild(inp); col.appendChild(row);
   };
 
-  // Periods 1-3 left, 4-6 right
   addRow(left, 0); addRow(left, 1); addRow(left, 2);
   addRow(right,3); addRow(right,4); addRow(right,5);
 
@@ -759,7 +746,7 @@ function renderFolderChoosers(cfg){
     const currentName = tempFolderNames[i] || "";
 
     const search = document.createElement("input"); search.type="search"; search.className="long";
-    search.placeholder = "Search Drive folders (name)";
+    search.placeholder = "Search Drive folder"; /* updated placeholder */
     const findBtn = document.createElement("button"); findBtn.className="btn"; findBtn.textContent="Find folder";
     const clearBtn = document.createElement("button"); clearBtn.className="btn secondary"; clearBtn.textContent="Clear";
     const selBox = document.createElement("div");
@@ -832,7 +819,6 @@ function openModal(){
   fillPeriodInputs(cfg.periods || ["","","","","",""]);
   renderSkipRows(cfg.skipWeeks || []);
 
-  // temp folder state = current config
   tempFolderIds = [...(cfg.periodFolders || ["","","","","",""])];
   tempFolderNames = ["","","","","",""];
   renderFolderChoosers(cfg);
