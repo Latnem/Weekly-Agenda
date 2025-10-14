@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Weekly Agendas — Master Template (GIS + Silent Auth + Remember Email)</title>
+<title>Weekly Agendas — Master Template (Minimal dbl-click linking)</title>
 <style>
   :root{ --ink:#111; --muted:#666; --link:#2166c2; --ring:#1697BB; --bg:#fff; --border:#e5e7eb; }
   html,body{font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial; color:var(--ink); background:#fff; margin:0}
@@ -17,7 +17,6 @@
   .btn.secondary{border-color:#ddd;background:#fafafa;color:#222}
   .btn.ghost{border:1px dashed var(--border); background:#fff; color:#333}
   .btn.warn{border-color:#f59e0b;background:#fff7ed;color:#8a4b00}
-  /* New green success style for the Settings primary action */
   .btn.success{border-color:#10b981;background:#ecfdf5;color:#065f46}
   .btn:disabled{opacity:.55; cursor:not-allowed}
   .pill{font-size:12px; border:1px solid #ddd; padding:2px 8px; border-radius:999px; color:#333; background:#fafafa}
@@ -31,13 +30,8 @@
   .grid th{font-weight:700; text-align:left; background:#fafafa}
   .sub{font-size:12px;color:#444;margin-top:2px}
   .note{font-size:13px;color:#444;line-height:1.35; white-space:pre-wrap}
-  /* YELLOW editing highlight */
-  .note.isEditing{
-    outline:2px solid rgba(234,179,8,.6);
-    background:#FFFBEB;
-    border-radius:6px;
-    padding:4px;
-  }
+  .note.isEditing{ outline:2px solid rgba(234,179,8,.6); background:#FFFBEB; border-radius:6px; padding:4px; }
+
   .weekHdr{display:flex; align-items:baseline; gap:12px; margin:28px 0 8px}
   .wkTitle{font-weight:800; font-size:18px}
   .wkLabel{font-weight:400; font-size:16px; white-space:nowrap}
@@ -48,8 +42,12 @@
   .badge--past{     border-color:#b91c1c33; background:#ffecec; color:#b91c1c; }
 
   .link{color:var(--link); text-decoration:underline; cursor:pointer}
-  .cellActions{display:flex; gap:8px; margin-top:8px; flex-wrap:wrap}
+  .muted{color:#666}
 
+  /* Minimal dbl-click affordance */
+  .dblHint{ font-size:11px; color:#9CA3AF; margin-top:4px; }
+
+  /* Inputs */
   input[type="search"], input[type="text"], select, input[type="number"], input[type="date"]{
     border:1px solid #ccc; border-radius:10px; padding:8px 10px; width:140px; min-width:120px; outline:none; background:#fff;
   }
@@ -57,17 +55,12 @@
   input.full{width:100%}
   input::placeholder{ color:#888; }
   input:focus, select:focus{border-color:var(--ring); box-shadow:0 0 0 3px #1697bb33}
-
-  /* Make Year fit its content (override the generic 140px width) */
   #yearInput{ width:6.5ch; min-width:5.5ch; max-width:8ch; }
 
   .results{margin-top:8px; border:1px solid #e5e5e5; border-radius:10px; overflow:hidden}
   .resultItem{padding:10px 12px; border-top:1px solid #efefef; display:flex; justify-content:space-between; align-items:center; gap:12px}
   .resultItem:first-child{border-top:none}
   .resultItem small{color:#666}
-  .colNotes{width:220px}
-  .muted{color:#666}
-  .time{font-weight:700}
 
   .slidesList{border-top:1px solid #eee; margin-top:8px; padding-top:8px}
   .slideRow{display:grid; grid-template-columns: 140px 1fr auto; align-items:center; gap:12px; padding:8px 0; border-top:1px dashed #eee}
@@ -85,24 +78,14 @@
   .modal h2{margin:0; font-size:18px}
   .modal .body{padding:16px}
 
-  /* Two-column top settings - 6px spacing */
-  .topCols{
-    display:grid;
-    grid-template-columns: 1fr 1fr;
-    column-gap:6px;
-    row-gap:10px;
-    align-items:start;
-    margin-bottom:8px;
-  }
-  @media (max-width: 720px){ .topCols{ grid-template-columns: 1fr; } }
+  .topCols{display:grid; grid-template-columns: 1fr 1fr; column-gap:6px; row-gap:10px; align-items:start; margin-bottom:8px;}
+  @media (max-width:720px){ .topCols{ grid-template-columns:1fr; } }
 
   .fieldsForm{display:flex; flex-direction:column; gap:8px;}
   .fRow{display:grid; grid-template-columns:110px 1fr; align-items:center; gap:6px;}
   .fRow label{font-size:13px; color:#333; text-align:center; white-space:nowrap;}
   .fieldsForm.compact .fRow{ grid-template-columns:100px 1fr; }
-  .fieldsForm.compact .fRow label{ text-align:center; }
 
-  /* Period inputs: two columns, centered labels */
   .twoCols{display:grid; grid-template-columns:1fr 1fr; gap:16px; align-items:start}
   @media (max-width: 720px){ .twoCols{ grid-template-columns: 1fr; } }
   .periodCol{display:flex; flex-direction:column; gap:10px}
@@ -110,18 +93,10 @@
   .pRow{display:grid; grid-template-columns:100px 1fr; align-items:center; gap:6px;}
   .pRow label{font-size:13px; color:#333; white-space:nowrap; text-align:center;}
 
-  /* Collapsible header for folder chooser (compact width) */
-  .collapsibleHead{
-    display:inline-flex; align-items:center; gap:8px;
-    cursor:pointer; user-select:none;
-    padding:8px 10px; border:1px solid var(--border); border-radius:10px; background:#fafafa;
-    margin-top:16px;
-    width:fit-content; max-width:min(520px, 92%);
-  }
+  .collapsibleHead{display:inline-flex; align-items:center; gap:8px; cursor:pointer; user-select:none; padding:8px 10px; border:1px solid var(--border); border-radius:10px; background:#fafafa; margin-top:16px; width:fit-content; max-width:min(520px, 92%);}
   .chev{transition: transform .18s ease; width:14px; height:14px; display:inline-block}
   .collapsibleHead[aria-expanded="true"] .chev{ transform: rotate(90deg); }
 
-  /* Folder chooser rows */
   .folderRow{display:grid; grid-template-columns: 110px 1fr auto; gap:10px; align-items:center; margin:6px 0;}
   .folderRow > div:first-child{font-size:13px; color:#333; text-align:center;}
   .folderBadge{display:inline-flex; align-items:center; gap:8px; padding:4px 10px; border:1px solid #d1d5db; border-radius:999px; background:#f8fafc; font-size:12px}
@@ -130,11 +105,14 @@
   .folderRow .btn{margin:4px 8px 4px 0;}
 
   .modal footer{padding:14px 16px; border-top:1px solid var(--border); display:flex; justify-content:space-between; align-items:center; gap:8px; flex-wrap:wrap}
-
   .field.periodNames > label{ margin-bottom:8px; display:block; }
-
-  /* Skip rows: ensure small gap between date inputs */
   #skipRows .skipRow{ display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin:6px 0; }
+
+  /* Minimal clickable subject */
+  .subjectLink{display:inline-block}
+  .subjectLink .muted{border-bottom:1px dotted #d1d5db;}
+  .subjectLink[data-clickable="true"]{cursor:pointer;}
+  .subjectLink[data-clickable="true"]:hover .muted{color:#333}
 </style>
 </head>
 <body>
@@ -239,7 +217,6 @@
         <button id="loadBaseline" class="btn secondary">Load Baseline</button>
       </div>
       <div class="row">
-        <!-- Label changed and green style applied -->
         <button id="saveSettings" class="btn success">Save &amp; Generate</button>
       </div>
     </footer>
@@ -319,55 +296,8 @@ function saveLinksFor(cfg, linksObj){
   localStorage.setItem(LS_KEY_LINKS, JSON.stringify(all));
 }
 
-function buildWeeks(cfg){
-  const startRaw = toDateAtMidnight(cfg.firstMonday);
-  const endRaw   = toDateAtMidnight(cfg.lastFriday);
-  if(!startRaw || !endRaw || startRaw > endRaw) return [];
-  const startMon = mondayOf(startRaw);
-  const endFri   = addDays(mondayOf(endRaw), 4);
-  const skipRanges = (cfg.skipWeeks||[]).map(({from,to})=>{
-    const sRaw = toDateAtMidnight(from); const eRaw = toDateAtMidnight(to);
-    if(!sRaw || !eRaw) return null;
-    const s = mondayOf(sRaw); const e = addDays(mondayOf(eRaw), 4);
-    return {from:s, to:e};
-  }).filter(Boolean);
-
-  const weeks=[]; let weekNum=0;
-  for(let mon=new Date(startMon); mon <= endFri; mon = addDays(mon,7)){
-    const fri = addDays(mon,4);
-    const isSkipped = skipRanges.some(r => overlaps(mon, fri, r.from, r.to));
-    if(isSkipped) continue;
-    weekNum++; weeks.push({ n:weekNum, monday:new Date(mon), friday:new Date(fri) });
-  }
-  return weeks;
-}
-
-function chooseDisplayWeek(weeks, now=new Date()){
-  if(!weeks.length) return { week:null, idx:-1 };
-  const mon = mondayOf(now);
-  let idx = weeks.findIndex(w => +w.monday === +mon);
-  if(idx !== -1){
-    const friMidnight = new Date(weeks[idx].friday); friMidnight.setHours(0,0,0,0);
-    const satMidnight = new Date(friMidnight.getTime() + dayMs);
-    if (now >= satMidnight) idx = Math.min(idx + 1, weeks.length - 1);
-  } else { idx = (now < weeks[0].monday) ? 0 : (weeks.length - 1); }
-  return { week: weeks[idx], idx };
-}
-
-let tokenClient = null;
-let gapiReady = false;
-let refreshTimer = null;
-
-function updateAuthUi(){
-  const meta = loadAuthMeta();
-  const email = (meta && meta.email) ? meta.email : "";
-  const authBtn = document.getElementById("authBtn");
-  authBtn.textContent = (GOOGLE.authed && email) ? email : "Connect Google Drive";
-
-  document.getElementById("authState").innerHTML =
-    "Drive: <strong>"+(GOOGLE.authed?"signed in":"signed out")+"</strong>";
-  document.getElementById("signoutBtn").disabled = !GOOGLE.authed;
-}
+/* === Google auth helpers === */
+let tokenClient = null; let gapiReady = false; let refreshTimer = null;
 
 async function loadGapiClient(){
   if (gapiReady) return;
@@ -375,7 +305,6 @@ async function loadGapiClient(){
   await gapi.client.init({ apiKey: GOOGLE.API_KEY, discoveryDocs: GOOGLE.DISCOVERY_DOCS });
   gapiReady = true;
 }
-
 async function initAuth(){
   await loadGapiClient();
   if (tokenClient) return tokenClient;
@@ -384,17 +313,15 @@ async function initAuth(){
     scope: GOOGLE.SCOPES,
     callback: async (resp) => {
       if (resp && resp.error) {
-        console.error("GIS token error:", resp);
-        alert("Sign-in failed: " + (resp.error_description || resp.error));
-        return;
+        alert("Sign-in failed: " + (resp.error_description || resp.error)); return;
       }
       gapi.client.setToken({ access_token: resp.access_token });
       GOOGLE.authed = true;
-
       try {
         const about = await gapi.client.drive.about.get({ fields: "user(emailAddress)" });
         const emailHint = about?.result?.user?.emailAddress || "";
-        saveAuthMeta({ email: emailHint, granted: true });
+        const prev = loadAuthMeta();
+        saveAuthMeta({ email: emailHint || prev.email || "", granted: true });
       } catch(e){
         const prev = loadAuthMeta();
         saveAuthMeta({ email: prev.email || "", granted: true });
@@ -404,28 +331,19 @@ async function initAuth(){
   });
   return tokenClient;
 }
-
 async function trySilentSignIn(){
   await initAuth();
   const meta = loadAuthMeta();
   try {
-    tokenClient.requestAccessToken({
-      prompt: "",
-      login_hint: meta.email || undefined,
-    });
-    return await new Promise(resolve => {
-      const start = Date.now();
-      const check = () => {
-        const tok = gapi.client.getToken?.();
-        if (tok && tok.access_token) return resolve(true);
-        if (Date.now() - start > 1500) return resolve(false);
-        setTimeout(check, 50);
-      };
+    tokenClient.requestAccessToken({ prompt:"", login_hint: meta.email || undefined });
+    return await new Promise(resolve=>{
+      const start=Date.now();
+      const check=()=>{ const tok=gapi.client.getToken?.(); if(tok && tok.access_token) return resolve(true);
+        if(Date.now()-start>1500) return resolve(false); setTimeout(check,50); };
       check();
     });
-  } catch(e) { return false; }
+  }catch(e){ return false; }
 }
-
 async function ensureSignedIn(){
   if (!window.google || !window.gapi) { alert("Google libraries not loaded yet. Try again in a second."); return; }
   await initAuth();
@@ -435,29 +353,29 @@ async function ensureSignedIn(){
   tokenClient.requestAccessToken({ prompt: "consent", login_hint: meta.email || undefined });
   return true;
 }
-
 async function signOut(){
   const tok = gapi.client.getToken?.();
-  if (tok && tok.access_token) {
-    try { google.accounts.oauth2.revoke(tok.access_token); } catch(e){}
-  }
-  gapi.client.setToken(null);
-  GOOGLE.authed = false;
-  const meta = loadAuthMeta();
-  saveAuthMeta({ email: meta.email || "", granted: false });
-  updateAuthUi();
+  if (tok && tok.access_token) { try{ google.accounts.oauth2.revoke(tok.access_token); }catch(e){} }
+  gapi.client.setToken(null); GOOGLE.authed=false;
+  const meta=loadAuthMeta(); saveAuthMeta({ email: meta.email || "", granted:false }); updateAuthUi();
 }
-
 function scheduleSilentRefresh(){
   if (refreshTimer) clearInterval(refreshTimer);
   refreshTimer = setInterval(async ()=>{
-    const meta = loadAuthMeta();
-    if (!meta.granted) return;
-    const ok = await trySilentSignIn();
-    if (ok) { GOOGLE.authed = true; updateAuthUi(); }
-  }, 45 * 60 * 1000);
+    const meta = loadAuthMeta(); if(!meta.granted) return;
+    const ok = await trySilentSignIn(); if(ok){ GOOGLE.authed=true; updateAuthUi(); }
+  }, 45*60*1000);
+}
+function updateAuthUi(){
+  const meta = loadAuthMeta();
+  const email = (meta && meta.email) ? meta.email : "";
+  const authBtn = document.getElementById("authBtn");
+  authBtn.textContent = (GOOGLE.authed && email) ? email : "Connect Google Drive";
+  document.getElementById("authState").innerHTML = "Drive: <strong>"+(GOOGLE.authed?"signed in":"signed out")+"</strong>";
+  document.getElementById("signoutBtn").disabled = !GOOGLE.authed;
 }
 
+/* === Drive/Slides helpers === */
 async function searchSlides(hint, folderId){
   await ensureSignedIn();
   const clauses = [
@@ -467,66 +385,88 @@ async function searchSlides(hint, folderId){
     folderId ? `'${folderId}' in parents` : null
   ].filter(Boolean);
   const q = clauses.join(" and ");
-  const res = await gapi.client.drive.files.list({
-    q, pageSize: 10, fields: "files(id,name,modifiedTime,webViewLink)"
-  });
+  const res = await gapi.client.drive.files.list({ q, pageSize:10, fields:"files(id,name,modifiedTime,webViewLink)" });
   return res.result.files || [];
 }
 async function searchFolders(term){
   await ensureSignedIn();
-  const q = [
-    "mimeType='application/vnd.google-apps.folder'",
-    "trashed=false",
-    term ? `name contains '${term.replace(/'/g,"\\'")}'` : null
-  ].filter(Boolean).join(" and ");
-  const res = await gapi.client.drive.files.list({
-    q, pageSize: 10, fields: "files(id,name)"
-  });
+  const q = ["mimeType='application/vnd.google-apps.folder'","trashed=false", term?`name contains '${term.replace(/'/g,"\\'")}'`:null].filter(Boolean).join(" and ");
+  const res = await gapi.client.drive.files.list({ q, pageSize:10, fields:"files(id,name)" });
   return res.result.files || [];
 }
-function slideLink(fileId, pageObjectId){
-  return `https://docs.google.com/presentation/d/${fileId}/edit#slide=id.${pageObjectId}`;
-}
+function slideLink(fileId, pageObjectId){ return `https://docs.google.com/presentation/d/${fileId}/edit#slide=id.${pageObjectId}`; }
 function titleFromSlide(slide, index){
   const elems = slide.pageElements || [];
   for(const el of elems){
     const shape = el.shape; if(!shape) continue;
     const ph = shape.placeholder;
-    if(ph && ph.type === "TITLE" && shape.text && shape.text.textElements){
-      let s = "";
-      for(const te of shape.text.textElements){ if(te.textRun && te.textRun.content) s += te.textRun.content; }
-      s = (s || "").trim(); if(s) return s;
+    if(ph && ph.type==="TITLE" && shape.text && shape.text.textElements){
+      let s=""; for(const te of shape.text.textElements){ if(te.textRun && te.textRun.content) s+=te.textRun.content; }
+      s=(s||"").trim(); if(s) return s;
     }
   }
   return `Slide ${index+1}`;
 }
 async function getSlideThumb(presentationId, pageObjectId){
   try{
-    const res = await gapi.client.slides.presentations.pages.getThumbnail({
+    const r=await gapi.client.slides.presentations.pages.getThumbnail({
       presentationId, pageObjectId,
-      "thumbnailProperties.mimeType":"PNG", "thumbnailProperties.thumbnailSize":"MEDIUM"
+      "thumbnailProperties.mimeType":"PNG","thumbnailProperties.thumbnailSize":"MEDIUM"
     });
-    return res.result.contentUrl;
+    return r.result.contentUrl;
   }catch(e){
     try{
-      const res2 = await gapi.client.slides.presentations.pages.getThumbnail({
+      const r2=await gapi.client.slides.presentations.pages.getThumbnail({
         presentationId, pageObjectId,
-        "thumbnailProperties.mimeType":"PNG", "thumbnailProperties.thumbnailSize":"SMALL"
+        "thumbnailProperties.mimeType":"PNG","thumbnailProperties.thumbnailSize":"SMALL"
       });
-      return res2.result.contentUrl;
+      return r2.result.contentUrl;
     }catch{ return ""; }
   }
 }
 
+/* === Weeks build & render === */
+function buildWeeks(cfg){
+  const startRaw = toDateAtMidnight(cfg.firstMonday);
+  const endRaw   = toDateAtMidnight(cfg.lastFriday);
+  if(!startRaw || !endRaw || startRaw > endRaw) return [];
+  const startMon = mondayOf(startRaw);
+  const endFri   = addDays(mondayOf(endRaw), 4);
+  const skipRanges = (cfg.skipWeeks||[]).map(({from,to})=>{
+    const sRaw=toDateAtMidnight(from); const eRaw=toDateAtMidnight(to); if(!sRaw||!eRaw) return null;
+    const s=mondayOf(sRaw); const e=addDays(mondayOf(eRaw),4); return {from:s,to:e};
+  }).filter(Boolean);
+
+  const weeks=[]; let weekNum=0;
+  for(let mon=new Date(startMon); mon<=endFri; mon=addDays(mon,7)){
+    const fri=addDays(mon,4);
+    const isSkipped = skipRanges.some(r => overlaps(mon, fri, r.from, r.to));
+    if(isSkipped) continue;
+    weekNum++; weeks.push({ n:weekNum, monday:new Date(mon), friday:new Date(fri) });
+  }
+  return weeks;
+}
+function chooseDisplayWeek(weeks, now=new Date()){
+  if(!weeks.length) return { week:null, idx:-1 };
+  const mon=mondayOf(now);
+  let idx=weeks.findIndex(w=>+w.monday===+mon);
+  if(idx!==-1){
+    const friMidnight=new Date(weeks[idx].friday); friMidnight.setHours(0,0,0,0);
+    const satMidnight=new Date(friMidnight.getTime()+dayMs);
+    if(now>=satMidnight) idx=Math.min(idx+1, weeks.length-1);
+  }else{ idx=(now<weeks[0].monday)?0:(weeks.length-1); }
+  return { week:weeks[idx], idx };
+}
 function weekActualLabel(w){ return formatRangeFull(w.monday, w.friday); }
 function headerActualLabel(cfg){ return `${cfg.semester || "Semester"} ${cfg.year || "Year"}`; }
 
+/* Minimal subject cell: dblclick to attach */
 function renderWeekTable(cfg, w, links){
-  const table = document.createElement("table"); table.className="grid";
-  const thead = document.createElement("thead"); const trh = document.createElement("tr");
+  const table=document.createElement("table"); table.className="grid";
+  const thead=document.createElement("thead"); const trh=document.createElement("tr");
 
-  const t0 = document.createElement("th"); t0.textContent = headerActualLabel(cfg); trh.appendChild(t0);
-  const PERIOD_TIMES = [
+  const t0=document.createElement("th"); t0.textContent=headerActualLabel(cfg); trh.appendChild(t0);
+  const PERIOD_TIMES=[
     { title:"8:30-9:26",  sub:"8:30-9:12" },
     { title:"9:33-10:29", sub:"9:19-10:01" },
     { title:"10:46-11:42",sub:"10:55-11:37" },
@@ -534,434 +474,328 @@ function renderWeekTable(cfg, w, links){
     { title:"1:34-2:30",  sub:"1:03-1:45" },
     { title:"2:37-3:33",  sub:"1:52-2:34" },
   ];
-  PERIOD_TIMES.forEach(p=>{
-    const th=document.createElement("th");
-    th.innerHTML = `<div class="time">${p.title}</div><div class="sub">${p.sub}</div>`;
-    trh.appendChild(th);
-  });
+  PERIOD_TIMES.forEach(p=>{ const th=document.createElement("th"); th.innerHTML=`<div class="time">${p.title}</div><div class="sub">${p.sub}</div>`; trh.appendChild(th); });
   const thNotes=document.createElement("th"); thNotes.textContent="Notes:"; thNotes.className="colNotes"; trh.appendChild(thNotes);
   thead.appendChild(trh); table.appendChild(thead);
 
-  const tbody = document.createElement("tbody"); const tr = document.createElement("tr");
-  const label = document.createElement("td"); label.innerHTML = `<div class="wkLabel">Week ${w.n}</div>`; tr.appendChild(label);
+  const tbody=document.createElement("tbody"); const tr=document.createElement("tr");
+  const label=document.createElement("td"); label.innerHTML=`<div class="wkLabel">Week ${w.n}</div>`; tr.appendChild(label);
 
   cfg.periods.forEach((periodLabel,idx)=>{
     const td=document.createElement("td");
-    const saved = links?.[w.n]?.[idx];
 
-    if(!periodLabel){ td.innerHTML = `<div class="muted">Conference</div>`; tr.appendChild(td); return; }
+    // Conference period (blank label)
+    if(!periodLabel){ td.innerHTML=`<div class="muted">Conference</div>`; tr.appendChild(td); return; }
+
+    // Build subject view (link if saved, muted text otherwise)
+    const saved = links?.[w.n]?.[idx];
+    const subjectWrap = document.createElement("div");
+    subjectWrap.className = "subjectLink";
+    subjectWrap.dataset.clickable = "true";
 
     if(saved){
       const href = saved.slideId ? slideLink(saved.id, saved.slideId) : (saved.url || "#");
-      td.innerHTML = `<div><a class="link" href="${href}" target="_blank" rel="noopener">${periodLabel}</a></div>`;
+      subjectWrap.innerHTML = `<a class="link" href="${href}" target="_blank" rel="noopener">${periodLabel}</a>`;
     }else{
-      td.innerHTML = `<div class="muted">${periodLabel}</div>`;
+      subjectWrap.innerHTML = `<span class="muted">${periodLabel}</span><div class="dblHint">double-click to link</div>`;
     }
 
-    const box = document.createElement("div"); box.className="cellActions";
-    const search = document.createElement("input"); search.type="search"; search.placeholder = `${periodLabel}`; search.value = "";
-    const attachBtn = document.createElement("button"); attachBtn.className="btn"; attachBtn.textContent="Link";
-    const results = document.createElement("div"); results.className="results"; results.style.display="none";
+    // Container for minimal chooser results (appears only on dblclick)
+    const results = document.createElement("div");
+    results.className = "results";
+    results.style.display = "none";
 
-    attachBtn.addEventListener("click", async ()=>{
-      results.style.display="block"; results.innerHTML = `<div class="resultItem"><em>Searching…</em></div>`;
+    // Dbl-click handler: search & choose file/slide
+    subjectWrap.addEventListener("dblclick", async ()=>{
       try{
-        const hintRaw = (search.value.trim() || search.placeholder || `Week ${w.n}`);
+        await ensureSignedIn();
+        results.style.display="block";
+        results.innerHTML = `<div class="resultItem"><em>Searching slides for “${periodLabel}”…</em></div>`;
         const folderId = (loadCfg().periodFolders || [])[idx] || "";
-        const files = await searchSlides(hintRaw, folderId);
+        const files = await searchSlides(periodLabel || `Week ${w.n}`, folderId);
         if(!files.length){ results.innerHTML = `<div class="resultItem"><em>No matches found.</em></div>`; return; }
         results.innerHTML = "";
-        files.forEach((f)=>{
-          const row = document.createElement("div"); row.className="resultItem";
-          const left = document.createElement("div");
+        files.forEach(f=>{
+          const row=document.createElement("div"); row.className="resultItem";
+          const left=document.createElement("div");
           left.innerHTML = `<div><strong>${f.name}</strong></div><small>Last modified ${new Date(f.modifiedTime).toLocaleDateString()}</small>`;
-          const pick = document.createElement("button"); pick.className="btn"; pick.textContent="Select";
+          const pick=document.createElement("button"); pick.className="btn"; pick.textContent="Select";
           row.appendChild(left); row.appendChild(pick); results.appendChild(row);
 
           pick.addEventListener("click", async ()=>{
-            pick.disabled = true; pick.textContent = "Loading slides…";
+            pick.disabled=true; pick.textContent="Loading slides…";
             try{
               const pres = await gapi.client.slides.presentations.get({ presentationId: f.id });
               const slides = pres.result.slides || [];
-              const nested = document.createElement("div"); nested.className = "slidesList";
-              if(!slides.length){
-                nested.innerHTML = `<div class="slideRow"><span class="slideTitle">No slides found</span></div>`;
-              } else {
-                slides.forEach((s, i)=>{
-                  const sr = document.createElement("div"); sr.className = "slideRow";
-                  const img = document.createElement("img"); img.className="thumb skel"; img.alt="Slide thumbnail"; img.loading="lazy";
-                  const meta = document.createElement("div");
-                  const human = titleFromSlide(s, i);
-                  meta.innerHTML = `<div class="slideTitle">${human}</div><div class="slideMeta">#${i+1}</div>`;
-                  const chooseBtn = document.createElement("button"); chooseBtn.className="choose"; chooseBtn.textContent="Choose";
+              const nested = document.createElement("div"); nested.className="slidesList";
+              if(!slides.length){ nested.innerHTML = `<div class="slideRow"><span class="slideTitle">No slides found</span></div>`; }
+              else{
+                slides.forEach((s,i)=>{
+                  const sr=document.createElement("div"); sr.className="slideRow";
+                  const img=document.createElement("img"); img.className="thumb skel"; img.alt="Slide thumbnail"; img.loading="lazy";
+                  const meta=document.createElement("div"); const human=titleFromSlide(s,i);
+                  meta.innerHTML=`<div class="slideTitle">${human}</div><div class="slideMeta">#${i+1}</div>`;
+                  const chooseBtn=document.createElement("button"); chooseBtn.className="choose"; chooseBtn.textContent="Choose";
                   chooseBtn.addEventListener("click", ()=>{
                     const all=loadLinksFor(cfg); all[w.n]??={};
-                    all[w.n][idx] = { id: f.id, name: f.name, slideId: s.objectId, url: f.webViewLink };
+                    all[w.n][idx] = { id:f.id, name:f.name, slideId:s.objectId, url:f.webViewLink };
                     saveLinksFor(cfg, all);
-                    td.querySelector(".muted")?.remove(); td.querySelector("div")?.remove();
-                    const linkDiv=document.createElement("div");
-                    linkDiv.innerHTML = `<a class="link" href="${slideLink(f.id, s.objectId)}" target="_blank" rel="noopener">${periodLabel}</a>`;
-                    td.insertBefore(linkDiv, box); results.style.display="none";
-                  });
 
+                    // Replace subject muted/link with link to chosen slide
+                    subjectWrap.innerHTML = `<a class="link" href="${slideLink(f.id, s.objectId)}" target="_blank" rel="noopener">${periodLabel}</a>`;
+                    results.style.display="none";
+                  });
                   sr.appendChild(img); sr.appendChild(meta); sr.appendChild(chooseBtn); nested.appendChild(sr);
-                  (async ()=>{ const url = await getSlideThumb(f.id, s.objectId);
-                    if(url){ img.src = url; img.classList.remove("skel"); }
-                  })();
+                  (async ()=>{ const url=await getSlideThumb(f.id, s.objectId); if(url){ img.src=url; img.classList.remove("skel"); } })();
                 });
               }
               row.insertAdjacentElement("afterend", nested);
-              pick.textContent = "Slides loaded";
+              pick.textContent="Slides loaded";
               setTimeout(()=>{ pick.textContent="Select"; pick.disabled=false; }, 800);
             }catch(e){
-              pick.textContent = "Select"; pick.disabled = false;
+              pick.textContent="Select"; pick.disabled=false;
               alert("Failed to load slides: " + (e.result?.error?.message || e.message || e));
             }
           });
         });
       }catch(err){
+        results.style.display="block";
         results.innerHTML = `<div class="resultItem"><em>Error: ${err.message||err}</em></div>`;
       }
     });
 
-    box.appendChild(search); box.appendChild(attachBtn);
-    td.appendChild(box); td.appendChild(results); tr.appendChild(td);
+    td.appendChild(subjectWrap);
+    td.appendChild(results);
+    tr.appendChild(td);
   });
 
-  /* NOTES cell (dblclick edit, Enter save) */
+  // NOTES: dbl-click to edit, Enter to save
   const tNotes=document.createElement("td");
-  const linksForWeek = links?.[w.n] || {};
-  const savedNotes = typeof linksForWeek.notes === "string" ? linksForWeek.notes : "*Agendas\n*Lessons\n*Grades\n*e-Calendar\n*Announcements\n*Services";
-  const notesDiv = document.createElement("div");
-  notesDiv.className = "note";
-  notesDiv.textContent = savedNotes;
-
-  notesDiv.addEventListener("dblclick", () => {
-    if (notesDiv.isContentEditable) return;
-    notesDiv.contentEditable = "true";
-    notesDiv.classList.add("isEditing");
-    const range = document.createRange(); range.selectNodeContents(notesDiv); range.collapse(false);
-    const sel = window.getSelection(); sel.removeAllRanges(); sel.addRange(range);
-    notesDiv.focus();
+  const linksForWeek=links?.[w.n] || {};
+  const savedNotes=typeof linksForWeek.notes==="string" ? linksForWeek.notes : "*Agendas\n*Lessons\n*Grades\n*e-Calendar\n*Announcements\n*Services";
+  const notesDiv=document.createElement("div"); notesDiv.className="note"; notesDiv.textContent=savedNotes;
+  notesDiv.addEventListener("dblclick", ()=>{
+    if(notesDiv.isContentEditable) return;
+    notesDiv.contentEditable="true"; notesDiv.classList.add("isEditing");
+    const r=document.createRange(); r.selectNodeContents(notesDiv); r.collapse(false);
+    const sel=window.getSelection(); sel.removeAllRanges(); sel.addRange(r); notesDiv.focus();
   });
-
-  notesDiv.addEventListener("keydown", (e)=>{
-    if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); finalizeNotes(); }
-    else if (e.key === "Escape") { e.preventDefault(); notesDiv.textContent = savedNotes; exitEdit(); }
+  notesDiv.addEventListener("keydown",(e)=>{
+    if(e.key==="Enter" && !e.shiftKey){ e.preventDefault(); finalizeNotes(); }
+    else if(e.key==="Escape"){ e.preventDefault(); notesDiv.textContent=savedNotes; exitEdit(); }
   });
-
   function finalizeNotes(){
-    const txt = notesDiv.textContent || "";
-    const all = loadLinksFor(cfg);
-    all[w.n] = all[w.n] || {};
-    all[w.n].notes = txt;
-    saveLinksFor(cfg, all);
-    exitEdit();
+    const txt=notesDiv.textContent||"";
+    const all=loadLinksFor(cfg); all[w.n]=all[w.n]||{}; all[w.n].notes=txt; saveLinksFor(cfg, all); exitEdit();
   }
-  function exitEdit(){
-    notesDiv.contentEditable = "false";
-    notesDiv.classList.remove("isEditing");
-  }
-
-  tNotes.appendChild(notesDiv);
-  tr.appendChild(tNotes);
+  function exitEdit(){ notesDiv.contentEditable="false"; notesDiv.classList.remove("isEditing"); }
+  tNotes.appendChild(notesDiv); tr.appendChild(tNotes);
 
   tbody.appendChild(tr); table.appendChild(tbody);
   return table;
 }
 
 function renderAll(){
-  const cfg = loadCfg(); const links = loadLinksFor(cfg);
-  const hasConfig = !!cfg.semester && !!cfg.year && !!cfg.firstMonday && !!cfg.lastFriday;
+  const cfg=loadCfg(); const links=loadLinksFor(cfg);
+  const hasConfig=!!cfg.semester && !!cfg.year && !!cfg.firstMonday && !!cfg.lastFriday;
 
-  const top = document.getElementById("currentWeekBlock");
-  const list = document.getElementById("allWeeks");
-  const empty = document.getElementById("emptyState");
-  top.innerHTML = ""; list.innerHTML = "";
+  const top=document.getElementById("currentWeekBlock");
+  const list=document.getElementById("allWeeks");
+  const empty=document.getElementById("emptyState");
+  top.innerHTML=""; list.innerHTML="";
 
-  if(!hasConfig){ empty.style.display = "block"; return; } else { empty.style.display = "none"; }
+  if(!hasConfig){ empty.style.display="block"; return; } else { empty.style.display="none"; }
 
-  const weeks = buildWeeks(cfg);
+  const weeks=buildWeeks(cfg);
   if(!weeks.length){ empty.style.display="block"; empty.textContent="No valid weeks found. Check First week, Last week, and any skipped weeks."; return; }
 
-  const now = new Date(); const pick = chooseDisplayWeek(weeks, now);
-  const displayWeek = pick.week; const currentIdx = pick.idx;
+  const now=new Date(); const pick=chooseDisplayWeek(weeks, now);
+  const displayWeek=pick.week; const currentIdx=pick.idx;
 
   if(displayWeek){
-    const hdr = document.createElement("div"); hdr.className="weekHdr";
-    hdr.innerHTML = `<div class="wkTitle">${weekActualLabel(displayWeek)}</div><span class="badge badge--current">Current</span>`;
+    const hdr=document.createElement("div"); hdr.className="weekHdr";
+    hdr.innerHTML=`<div class="wkTitle">${weekActualLabel(displayWeek)}</div><span class="badge badge--current">Current</span>`;
     top.appendChild(hdr); top.appendChild(renderWeekTable(cfg, displayWeek, links));
   }
-  if(currentIdx < weeks.length - 1){
-    for(let i=currentIdx+1; i<weeks.length; i++){
-      const w = weeks[i]; const block = document.createElement("div"); block.style.marginTop = "22px";
-      const hdr = document.createElement("div"); hdr.className="weekHdr";
-      hdr.innerHTML = `<div class="wkTitle">${weekActualLabel(w)}</div><span class="badge badge--upcoming">Upcoming</span>`;
+  if(currentIdx < weeks.length-1){
+    for(let i=currentIdx+1;i<weeks.length;i++){
+      const w=weeks[i]; const block=document.createElement("div"); block.style.marginTop="22px";
+      const hdr=document.createElement("div"); hdr.className="weekHdr";
+      hdr.innerHTML=`<div class="wkTitle">${weekActualLabel(w)}</div><span class="badge badge--upcoming">Upcoming</span>`;
       block.appendChild(hdr); block.appendChild(renderWeekTable(cfg, w, links)); list.appendChild(block);
     }
   }
-  if (currentIdx > 0 && currentIdx < weeks.length - 1) {
-    const divider = document.createElement("div"); divider.className = "sectionRule"; list.appendChild(divider);
+  if(currentIdx>0 && currentIdx<weeks.length-1){
+    const divider=document.createElement("div"); divider.className="sectionRule"; list.appendChild(divider);
   }
-  if(currentIdx > 0){
-    for(let i=0; i<currentIdx; i++){
-      const w = weeks[i]; const block = document.createElement("div"); block.style.marginTop = "22px";
-      const hdr = document.createElement("div"); hdr.className="weekHdr";
-      hdr.innerHTML = `<div class="wkTitle">${weekActualLabel(w)}</div><span class="badge badge--past">Past</span>`;
+  if(currentIdx>0){
+    for(let i=0;i<currentIdx;i++){
+      const w=weeks[i]; const block=document.createElement("div"); block.style.marginTop="22px";
+      const hdr=document.createElement("div"); hdr.className="weekHdr";
+      hdr.innerHTML=`<div class="wkTitle">${weekActualLabel(w)}</div><span class="badge badge--past">Past</span>`;
       block.appendChild(hdr); block.appendChild(renderWeekTable(cfg, w, links)); list.appendChild(block);
     }
   }
 }
 
-function loadGh(){ try{ return JSON.parse(localStorage.getItem(LS_KEY_GH)||"{}"); }catch{ return {}; } }
-function saveGh(obj){ localStorage.setItem(LS_KEY_GH, JSON.stringify(obj)); }
-async function gistRequest(method, path, body, token){
-  const res = await fetch(`https://api.github.com${path}`, {
-    method, headers: { "Accept":"application/vnd.github+json", "Authorization": `Bearer ${token}`, "Content-Type":"application/json" },
-    body: body ? JSON.stringify(body) : undefined
-  });
-  if(!res.ok){ return null; }
-  try { return await res.json(); } catch { return null; }
-}
-function exportAllData(){
-  const cfg = loadCfg(); let allLinks = {};
-  try{ allLinks = JSON.parse(localStorage.getItem(LS_KEY_LINKS) || "{}"); }catch{}
-  return { cfg, linksBySemester: allLinks };
-}
-async function silentSaveToGistIfConfigured(){
-  const gh = loadGh();
-  const token = (gh.token || "").trim();
-  const gistId = (gh.gistId || "").trim();
-  if(!token) return;
+/* === Settings UI (unchanged except for green primary) === */
+const modal=document.getElementById("settingsModal");
+const openSettings=document.getElementById("openSettings");
+const closeSettings=document.getElementById("closeSettings");
+const semesterSel=document.getElementById("semesterSel");
+const yearInput=document.getElementById("yearInput");
+const periodInputsWrap=document.getElementById("periodInputs");
+const folderToggle=document.getElementById("folderToggle");
+const folderChooserWrap=document.getElementById("folderChooserWrap");
+const folderChooserArea=document.getElementById("folderChooserArea");
+const resetDefaults=document.getElementById("resetDefaults");
+const saveBaselineBtn=document.getElementById("saveBaseline");
+const loadBaselineBtn=document.getElementById("loadBaseline");
+const saveSettings=document.getElementById("saveSettings");
+const firstMondayInp=document.getElementById("firstMonday");
+const lastFridayInp=document.getElementById("lastFriday");
+const skipRowsWrap=document.getElementById("skipRows");
+const addSkipBtn=document.getElementById("addSkip");
 
-  const data = exportAllData();
-  const files = {
-    "agenda-config.json": { content: JSON.stringify(data.cfg, null, 2) },
-    "agenda-links.json":  { content: JSON.stringify(data.linksBySemester, null, 2) }
-  };
-
-  if(gistId){
-    const updated = await gistRequest("PATCH", `/gists/${gistId}`, { files }, token);
-    if(updated && updated.id && updated.id !== gistId){ saveGh({ token, gistId: updated.id }); }
-  }else{
-    const created = await gistRequest("POST", `/gists`, { description:"Weekly Agendas — sync", public:false, files }, token);
-    if(created && created.id){ saveGh({ token, gistId: created.id }); }
-  }
-}
-
-const modal = document.getElementById("settingsModal");
-const openSettings = document.getElementById("openSettings");
-const closeSettings = document.getElementById("closeSettings");
-const semesterSel = document.getElementById("semesterSel");
-const yearInput = document.getElementById("yearInput");
-const periodInputsWrap = document.getElementById("periodInputs");
-const folderToggle = document.getElementById("folderToggle");
-const folderChooserWrap = document.getElementById("folderChooserWrap");
-const folderChooserArea = document.getElementById("folderChooserArea");
-const resetDefaults = document.getElementById("resetDefaults");
-const saveBaselineBtn = document.getElementById("saveBaseline");
-const loadBaselineBtn = document.getElementById("loadBaseline");
-const saveSettings = document.getElementById("saveSettings");
-const firstMondayInp = document.getElementById("firstMonday");
-const lastFridayInp  = document.getElementById("lastFriday");
-const skipRowsWrap   = document.getElementById("skipRows");
-const addSkipBtn     = document.getElementById("addSkip");
-
-let tempFolderIds = ["","","","","",""];
-let tempFolderNames = ["","","","","",""];
+let tempFolderIds=["","","","","",""]; let tempFolderNames=["","","","","",""];
 
 function fillPeriodInputs(periods){
-  periodInputsWrap.innerHTML = "";
-  const left = document.createElement("div");  left.className = "periodCol";
-  const right = document.createElement("div"); right.className = "periodCol right";
-
-  const addRow = (col, idx) => {
-    const row = document.createElement("div"); row.className="pRow";
-    const lab = document.createElement("label"); lab.textContent = `Period ${idx+1}`; lab.setAttribute("for", `p${idx}`);
-    const inp = document.createElement("input"); inp.id=`p${idx}`; inp.type="text"; inp.placeholder=""; inp.value = periods[idx] || ""; inp.dataset.idx = idx; inp.className="full";
+  periodInputsWrap.innerHTML="";
+  const left=document.createElement("div"); left.className="periodCol";
+  const right=document.createElement("div"); right.className="periodCol right";
+  const addRow=(col,idx)=>{
+    const row=document.createElement("div"); row.className="pRow";
+    const lab=document.createElement("label"); lab.textContent=`Period ${idx+1}`; lab.setAttribute("for",`p${idx}`);
+    const inp=document.createElement("input"); inp.id=`p${idx}`; inp.type="text"; inp.placeholder=""; inp.value=periods[idx]||""; inp.dataset.idx=idx; inp.className="full";
     row.appendChild(lab); row.appendChild(inp); col.appendChild(row);
   };
-
-  addRow(left, 0); addRow(left, 1); addRow(left, 2);
+  addRow(left,0); addRow(left,1); addRow(left,2);
   addRow(right,3); addRow(right,4); addRow(right,5);
-
-  const wrap = document.createElement("div"); wrap.className="twoCols";
-  wrap.appendChild(left); wrap.appendChild(right);
+  const wrap=document.createElement("div"); wrap.className="twoCols"; wrap.appendChild(left); wrap.appendChild(right);
   periodInputsWrap.appendChild(wrap);
 }
-
 function renderFolderChoosers(cfg){
-  folderChooserArea.innerHTML = "";
+  folderChooserArea.innerHTML="";
   for(let i=0;i<6;i++){
-    const wrap = document.createElement("div"); wrap.className = "folderRow";
-    const lab = document.createElement("div"); lab.textContent = `Period ${i+1}`;
-    const right = document.createElement("div");
-    const currentId = tempFolderIds[i] || cfg.periodFolders[i] || "";
-    const currentName = tempFolderNames[i] || "";
-
-    const search = document.createElement("input"); search.type="search"; search.className="long";
-    search.placeholder = "Search Drive folder";
-    const findBtn = document.createElement("button"); findBtn.className="btn"; findBtn.textContent="Find folder";
-    const clearBtn = document.createElement("button"); clearBtn.className="btn secondary"; clearBtn.textContent="Clear";
-    const selBox = document.createElement("div");
-    if(currentId){
-      selBox.className = "folderBadge";
-      selBox.innerHTML = `<span>Selected:</span> <code>${currentName || currentId}</code>`;
-    }
-
-    const results = document.createElement("div"); results.className="results"; results.style.display="none";
-
+    const wrap=document.createElement("div"); wrap.className="folderRow";
+    const lab=document.createElement("div"); lab.textContent=`Period ${i+1}`;
+    const right=document.createElement("div");
+    const currentId=tempFolderIds[i] || cfg.periodFolders[i] || ""; const currentName=tempFolderNames[i] || "";
+    const search=document.createElement("input"); search.type="search"; search.className="long"; search.placeholder="Search Drive folder";
+    const findBtn=document.createElement("button"); findBtn.className="btn"; findBtn.textContent="Find folder";
+    const clearBtn=document.createElement("button"); clearBtn.className="btn secondary"; clearBtn.textContent="Clear";
+    const selBox=document.createElement("div"); if(currentId){ selBox.className="folderBadge"; selBox.innerHTML=`<span>Selected:</span> <code>${currentName || currentId}</code>`; }
+    const results=document.createElement("div"); results.className="results"; results.style.display="none";
     findBtn.addEventListener("click", async ()=>{
-      results.style.display="block"; results.innerHTML = `<div class="resultItem"><em>Searching…</em></div>`;
+      results.style.display="block"; results.innerHTML=`<div class="resultItem"><em>Searching…</em></div>`;
       try{
-        const term = search.value.trim();
-        const items = await searchFolders(term);
-        if(!items.length){ results.innerHTML = `<div class="resultItem"><em>No folders found.</em></div>`; return; }
-        results.innerHTML = "";
-        items.forEach(f=>{
-          const row = document.createElement("div"); row.className="resultItem";
-          const left = document.createElement("div"); left.innerHTML = `<div><strong>${f.name}</strong></div><small>ID: ${f.id}</small>`;
-          const pick = document.createElement("button"); pick.className="btn"; pick.textContent="Use this folder";
-          pick.addEventListener("click", ()=>{
-            tempFolderIds[i] = f.id;
-            tempFolderNames[i] = f.name;
-            selBox.className = "folderBadge";
-            selBox.innerHTML = `<span>Selected:</span> <code>${f.name}</code>`;
-            results.style.display="none";
-          });
+        const term=search.value.trim(); const items=await searchFolders(term);
+        if(!items.length){ results.innerHTML=`<div class="resultItem"><em>No folders found.</em></div>`; return; }
+        results.innerHTML=""; items.forEach(f=>{
+          const row=document.createElement("div"); row.className="resultItem";
+          const left=document.createElement("div"); left.innerHTML=`<div><strong>${f.name}</strong></div><small>ID: ${f.id}</small>`;
+          const pick=document.createElement("button"); pick.className="btn"; pick.textContent="Use this folder";
+          pick.addEventListener("click",()=>{ tempFolderIds[i]=f.id; tempFolderNames[i]=f.name; selBox.className="folderBadge"; selBox.innerHTML=`<span>Selected:</span> <code>${f.name}</code>`; results.style.display="none"; });
           row.appendChild(left); row.appendChild(pick); results.appendChild(row);
         });
-      }catch(e){
-        results.innerHTML = `<div class="resultItem"><em>Error: ${e.message||e}</em></div>`;
-      }
+      }catch(e){ results.innerHTML=`<div class="resultItem"><em>Error: ${e.message||e}</em></div>`; }
     });
-
-    clearBtn.addEventListener("click", ()=>{
-      tempFolderIds[i] = "";
-      tempFolderNames[i] = "";
-      selBox.className = "";
-      selBox.innerHTML = "";
-    });
-
+    clearBtn.addEventListener("click",()=>{ tempFolderIds[i]=""; tempFolderNames[i]=""; selBox.className=""; selBox.innerHTML=""; });
     right.appendChild(search); right.appendChild(findBtn); right.appendChild(clearBtn); right.appendChild(selBox); right.appendChild(results);
-    wrap.appendChild(lab); wrap.appendChild(right);
-    folderChooserArea.appendChild(wrap);
+    wrap.appendChild(lab); wrap.appendChild(right); folderChooserArea.appendChild(wrap);
   }
 }
-
-function renderSkipRows(skipWeeks){
-  const wrap = document.getElementById("skipRows");
-  wrap.innerHTML = "";
-  if(skipWeeks && skipWeeks.length){ skipWeeks.forEach(({from,to})=> addSkipRow(from,to)); }
-}
-function addSkipRow(from="", to=""){
-  const row = document.createElement("div"); row.className = "skipRow";
-  const fromInp = document.createElement("input"); fromInp.type="date"; fromInp.value = from;
-  const toInp = document.createElement("input"); toInp.type="date"; toInp.value = to;
-  const delBtn = document.createElement("button"); delBtn.type="button"; delBtn.className="btn secondary"; delBtn.textContent="Remove";
-  delBtn.addEventListener("click", ()=> row.remove());
+function renderSkipRows(skipWeeks){ const wrap=document.getElementById("skipRows"); wrap.innerHTML=""; if(skipWeeks&&skipWeeks.length){ skipWeeks.forEach(({from,to})=> addSkipRow(from,to)); } }
+function addSkipRow(from="",to=""){
+  const row=document.createElement("div"); row.className="skipRow";
+  const fromInp=document.createElement("input"); fromInp.type="date"; fromInp.value=from;
+  const toInp=document.createElement("input"); toInp.type="date"; toInp.value=to;
+  const delBtn=document.createElement("button"); delBtn.type="button"; delBtn.className="btn secondary"; delBtn.textContent="Remove";
+  delBtn.addEventListener("click",()=> row.remove());
   row.appendChild(fromInp); row.appendChild(toInp); row.appendChild(delBtn);
   document.getElementById("skipRows").appendChild(row);
 }
 function collectSkipRows(){
-  const rows = Array.from(document.querySelectorAll("#skipRows .skipRow"));
-  const out = [];
-  rows.forEach(r=>{
-    const [fromInp, toInp] = r.querySelectorAll("input");
-    const from = fromInp?.value || "";
-    const to = toInp?.value || "";
-    if(from && to) out.push({from,to});
-  });
+  const rows=Array.from(document.querySelectorAll("#skipRows .skipRow")); const out=[];
+  rows.forEach(r=>{ const [fromInp,toInp]=r.querySelectorAll("input"); const from=fromInp?.value||""; const to=toInp?.value||""; if(from&&to) out.push({from,to}); });
   return out;
 }
 
-function setFolderCollapsed(collapsed){
-  const expanded = !collapsed;
-  folderToggle.setAttribute("aria-expanded", String(expanded));
-  folderChooserWrap.style.display = expanded ? "block" : "none";
-}
-folderToggle.addEventListener("click", ()=> setFolderCollapsed(folderChooserWrap.style.display !== "none"));
-folderToggle.addEventListener("keydown", (e)=>{ if(e.key===" "||e.key==="Enter"){ e.preventDefault(); setFolderCollapsed(folderChooserWrap.style.display !== "none"); } });
+function setFolderCollapsed(collapsed){ const expanded=!collapsed; folderToggle.setAttribute("aria-expanded", String(expanded)); folderChooserWrap.style.display=expanded?"block":"none"; }
+folderToggle.addEventListener("click",()=> setFolderCollapsed(folderChooserWrap.style.display!=="none"));
+folderToggle.addEventListener("keydown",(e)=>{ if(e.key===" "||e.key==="Enter"){ e.preventDefault(); setFolderCollapsed(folderChooserWrap.style.display!=="none"); } });
 
 function openModal(){
-  const cfg = loadCfg();
-  semesterSel.value = cfg.semester || "";
-  yearInput.value = cfg.year || "";
-  document.getElementById("firstMonday").value = cfg.firstMonday || "";
-  document.getElementById("lastFriday").value  = cfg.lastFriday  || "";
-  fillPeriodInputs(cfg.periods || ["","","","","",""]);
-  renderSkipRows(cfg.skipWeeks || []);
-
-  tempFolderIds = [...(cfg.periodFolders || ["","","","","",""])];
-  tempFolderNames = ["","","","","",""];
-  renderFolderChoosers(cfg);
-
-  setFolderCollapsed(true);
-  modal.style.display = "flex";
+  const cfg=loadCfg();
+  semesterSel.value=cfg.semester||""; yearInput.value=cfg.year||"";
+  document.getElementById("firstMonday").value=cfg.firstMonday||"";
+  document.getElementById("lastFriday").value=cfg.lastFriday||"";
+  fillPeriodInputs(cfg.periods||["","","","","",""]); renderSkipRows(cfg.skipWeeks||[]);
+  tempFolderIds=[...(cfg.periodFolders||["","","","","",""])]; tempFolderNames=["","","","","",""]; renderFolderChoosers(cfg);
+  setFolderCollapsed(true); modal.style.display="flex";
 }
-function closeModal(){ modal.style.display = "none"; }
+function closeModal(){ modal.style.display="none"; }
 
 openSettings.addEventListener("click", openModal);
 closeSettings.addEventListener("click", closeModal);
-modal.addEventListener("click", (e)=>{ if(e.target===modal) closeModal(); });
+modal.addEventListener("click",(e)=>{ if(e.target===modal) closeModal(); });
 
-addSkipBtn.addEventListener("click", ()=> addSkipRow());
+addSkipBtn.addEventListener("click",()=> addSkipRow());
 
-resetDefaults.addEventListener("click", ()=>{
-  saveCfg({...NEUTRAL_CFG}); closeModal(); renderAll();
-});
+resetDefaults.addEventListener("click",()=>{ saveCfg({...NEUTRAL_CFG}); closeModal(); renderAll(); });
 document.getElementById("saveBaseline").addEventListener("click", ()=>{
-  const current = loadCfg(); saveBaselineCfg(current);
-  const btn = document.getElementById("saveBaseline");
-  btn.textContent = "Baseline Saved ✓"; setTimeout(()=> btn.textContent = "Save as Baseline", 1500);
+  const current=loadCfg(); saveBaselineCfg(current);
+  const btn=document.getElementById("saveBaseline"); btn.textContent="Baseline Saved ✓"; setTimeout(()=> btn.textContent="Save as Baseline",1500);
 });
 document.getElementById("loadBaseline").addEventListener("click", ()=>{
-  const base = loadBaselineCfg();
-  const btn = document.getElementById("loadBaseline");
-  if(!base){ btn.textContent = "No Baseline Found"; setTimeout(()=> btn.textContent="Load Baseline", 1500); return; }
+  const base=loadBaselineCfg(); const btn=document.getElementById("loadBaseline");
+  if(!base){ btn.textContent="No Baseline Found"; setTimeout(()=> btn.textContent="Load Baseline",1500); return; }
   saveCfg(base); closeModal(); renderAll();
 });
 
 document.getElementById("saveSettings").addEventListener("click", async ()=>{
-  const periods = []; const inputs = document.querySelectorAll("#periodInputs input[type='text']");
-  inputs.forEach(inp => { periods[+inp.dataset.idx] = (inp.value || "").trim(); });
-
-  const next = {
-    semester: semesterSel.value || "",
-    year: (document.getElementById("yearInput").value || "").trim(),
+  const periods=[]; const inputs=document.querySelectorAll("#periodInputs input[type='text']"); inputs.forEach(inp=>{ periods[+inp.dataset.idx]=(inp.value||"").trim(); });
+  const next={
+    semester: semesterSel.value||"",
+    year: (document.getElementById("yearInput").value||"").trim(),
     periods,
     periodFolders: tempFolderIds,
-    firstMonday: (document.getElementById("firstMonday").value || ""),
-    lastFriday:  (document.getElementById("lastFriday").value  || ""),
+    firstMonday: (document.getElementById("firstMonday").value||""),
+    lastFriday:  (document.getElementById("lastFriday").value ||""),
     skipWeeks: collectSkipRows(),
-    labelsFinalized: true,
+    labelsFinalized:true
   };
-  saveCfg(next);
-  closeModal();
-  renderAll();
-
+  saveCfg(next); closeModal(); renderAll();
   await silentSaveToGistIfConfigured();
 });
 
-document.getElementById("authBtn").addEventListener("click", async ()=>{
-  try{ await ensureSignedIn(); }catch(err){ console.error(err); alert("Sign-in failed: "+(err.error||err.message||err)); }
-});
+/* Auth buttons */
+document.getElementById("authBtn").addEventListener("click", async ()=>{ try{ await ensureSignedIn(); }catch(err){ alert("Sign-in failed: "+(err.error||err.message||err)); } });
 document.getElementById("signoutBtn").addEventListener("click", async ()=>{ await signOut(); });
 
+/* Gist silent sync (kept from earlier) */
+function loadGh(){ try{ return JSON.parse(localStorage.getItem(LS_KEY_GH)||"{}"); }catch{ return {}; } }
+function saveGh(obj){ localStorage.setItem(LS_KEY_GH, JSON.stringify(obj)); }
+async function gistRequest(method, path, body, token){
+  const res=await fetch(`https://api.github.com${path}`,{ method, headers:{ "Accept":"application/vnd.github+json","Authorization":`Bearer ${token}`,"Content-Type":"application/json"}, body: body?JSON.stringify(body):undefined });
+  if(!res.ok) return null; try{ return await res.json(); }catch{ return null; }
+}
+function exportAllData(){ const cfg=loadCfg(); let allLinks={}; try{ allLinks=JSON.parse(localStorage.getItem(LS_KEY_LINKS)||"{}"); }catch{} return { cfg, linksBySemester: allLinks }; }
+async function silentSaveToGistIfConfigured(){
+  const gh=loadGh(); const token=(gh.token||"").trim(); const gistId=(gh.gistId||"").trim(); if(!token) return;
+  const data=exportAllData(); const files={ "agenda-config.json":{content:JSON.stringify(data.cfg,null,2)}, "agenda-links.json":{content:JSON.stringify(data.linksBySemester,null,2)} };
+  if(gistId){ const updated=await gistRequest("PATCH",`/gists/${gistId}`,{files},token); if(updated && updated.id && updated.id!==gistId){ saveGh({token,gistId:updated.id}); } }
+  else { const created=await gistRequest("POST",`/gists`,{description:"Weekly Agendas — sync", public:false, files},token); if(created && created.id){ saveGh({token,gistId:created.id}); } }
+}
+
+/* Auto rerender each minute in case week turns over at midnight Saturday */
 setInterval(()=>{ renderAll(); }, 60*1000);
 
+/* Init */
 (async function initOnLoad(){
   if(!localStorage.getItem(LS_KEY_CFG)) saveCfg({...NEUTRAL_CFG});
-  try {
-    const meta = loadAuthMeta();
-    if (meta.granted) {
-      const ok = await trySilentSignIn();
-      if (ok) { GOOGLE.authed = true; }
-    }
-  } catch(e) { /* ignore */ }
-  updateAuthUi();
-  scheduleSilentRefresh();
-  renderAll();
+  try{ const meta=loadAuthMeta(); if(meta.granted){ const ok=await trySilentSignIn(); if(ok){ GOOGLE.authed=true; } } }catch(e){}
+  updateAuthUi(); scheduleSilentRefresh(); renderAll();
 })();
 </script>
 </body>
