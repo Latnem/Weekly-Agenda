@@ -45,6 +45,7 @@
     border:1px solid #ccc; border-radius:10px; padding:8px 10px; width:140px; min-width:120px; outline:none; background:#fff;
   }
   input.long{width:260px}
+  input.full{width:100%}
   input::placeholder{ color:#888; }
   input:focus, select:focus{border-color:var(--ring); box-shadow:0 0 0 3px #1697bb33}
 
@@ -76,7 +77,13 @@
   .field{display:flex; flex-direction:column; gap:6px}
   .field label{font-size:13px; color:#333}
   .row{display:flex; gap:12px; align-items:center; flex-wrap:wrap}
-  .periodGrid{display:grid; grid-template-columns: 100px 1fr; gap:10px; align-items:start}
+
+  /* NEW: two-column period labels */
+  .twoCols{display:grid; grid-template-columns:1fr 1fr; gap:16px; align-items:start}
+  .periodCol{display:flex; flex-direction:column; gap:10px}
+  .pRow{display:grid; grid-template-columns:90px 1fr; align-items:center; gap:8px}
+  .pRow label{font-size:13px; color:#333}
+
   .folderRow{display:grid; grid-template-columns: 100px 1fr auto; gap:10px; align-items:center}
   .folderBadge{display:inline-flex; align-items:center; gap:8px; padding:4px 10px; border:1px solid #d1d5db; border-radius:999px; background:#f8fafc; font-size:12px}
   .folderBadge code{font-family:ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono"; font-size:11px; color:#334155}
@@ -149,7 +156,7 @@
       <!-- Period names -->
       <div class="field" style="margin-top:12px;">
         <label>Label each period (leave blank for conference)</label>
-        <div class="periodGrid" id="periodInputs"></div>
+        <div class="twoCols" id="periodInputs"></div>
       </div>
 
       <!-- Folder chooser per period -->
@@ -719,13 +726,27 @@ const gistLoadBtn = document.getElementById("gistLoad");
 let tempFolderIds = ["","","","","",""];
 let tempFolderNames = ["","","","","",""];
 
+/* UPDATED: render the two-column Period inputs */
 function fillPeriodInputs(periods){
   periodInputsWrap.innerHTML = "";
-  for(let i=0;i<6;i++){
-    const lbl = document.createElement("div"); lbl.textContent = `Period ${i+1}`;
-    const inp = document.createElement("input"); inp.type="text"; inp.placeholder = ""; inp.value = periods[i] || ""; inp.dataset.idx = i;
-    periodInputsWrap.appendChild(lbl); periodInputsWrap.appendChild(inp);
-  }
+  const left = document.createElement("div");  left.className = "periodCol";
+  const right = document.createElement("div"); right.className = "periodCol";
+
+  // Helper to add a row
+  const addRow = (col, idx) => {
+    const row = document.createElement("div"); row.className="pRow";
+    const lab = document.createElement("label"); lab.textContent = `Period ${idx+1}`; lab.setAttribute("for", `p${idx}`);
+    const inp = document.createElement("input"); inp.id=`p${idx}`; inp.type="text"; inp.placeholder=""; inp.value = periods[idx] || ""; inp.dataset.idx = idx; inp.className="full";
+    row.appendChild(lab); row.appendChild(inp); col.appendChild(row);
+  };
+
+  // Periods 1-3 left, 4-6 right
+  addRow(left, 0); addRow(left, 1); addRow(left, 2);
+  addRow(right,3); addRow(right,4); addRow(right,5);
+
+  const wrap = document.createElement("div"); wrap.className="twoCols";
+  wrap.appendChild(left); wrap.appendChild(right);
+  periodInputsWrap.appendChild(wrap);
 }
 
 function renderFolderChoosers(cfg){
@@ -787,17 +808,17 @@ function renderFolderChoosers(cfg){
   }
 }
 
-function renderSkipRows(skipWeeks){ skipRowsWrap.innerHTML = ""; if(skipWeeks && skipWeeks.length){ skipWeeks.forEach(({from,to})=> addSkipRow(from,to)); } }
+function renderSkipRows(skipWeeks){ const wrap = document.getElementById("skipRows"); wrap.innerHTML = ""; if(skipWeeks && skipWeeks.length){ skipWeeks.forEach(({from,to})=> addSkipRow(from,to)); } }
 function addSkipRow(from="", to=""){
   const row = document.createElement("div"); row.className = "skipRow";
   const fromInp = document.createElement("input"); fromInp.type="date"; fromInp.value = from;
   const toInp = document.createElement("input"); toInp.type="date"; toInp.value = to;
   const delBtn = document.createElement("button"); delBtn.type="button"; delBtn.className="btn secondary"; delBtn.textContent="Remove";
   delBtn.addEventListener("click", ()=> row.remove());
-  row.appendChild(fromInp); row.appendChild(toInp); row.appendChild(delBtn); skipRowsWrap.appendChild(row);
+  row.appendChild(fromInp); row.appendChild(toInp); row.appendChild(delBtn); document.getElementById("skipRows").appendChild(row);
 }
 function collectSkipRows(){
-  const rows = Array.from(skipRowsWrap.querySelectorAll(".skipRow"));
+  const rows = Array.from(document.querySelectorAll("#skipRows .skipRow"));
   const out = []; rows.forEach(r=>{ const [fromInp, toInp] = r.querySelectorAll("input"); const from = fromInp?.value || ""; const to = toInp?.value || ""; if(from && to) out.push({from,to}); });
   return out;
 }
@@ -840,7 +861,7 @@ loadBaselineBtn.addEventListener("click", ()=>{
   saveCfg(base); closeModal(); renderAll();
 });
 saveSettings.addEventListener("click", ()=>{
-  const periods = []; const inputs = periodInputsWrap.querySelectorAll("input[type='text']");
+  const periods = []; const inputs = document.querySelectorAll("#periodInputs input[type='text']");
   inputs.forEach(inp => { periods[+inp.dataset.idx] = (inp.value || "").trim(); });
 
   const next = {
