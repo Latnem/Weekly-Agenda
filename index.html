@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Weekly Agendas — Master Template (Folder-aware typed search)</title>
+<title>Weekly Agendas — Master Template (Folder-aware typed search + easy close)</title>
 <style>
   :root{ --ink:#111; --muted:#666; --link:#2166c2; --ring:#1697BB; --bg:#fff; --border:#e5e7eb; }
   html,body{font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial; color:var(--ink); background:#fff; margin:0}
@@ -502,6 +502,31 @@ function renderWeekTable(cfg, w, links){
     results.className = "results";
     results.style.display = "none";
 
+    // helper: add/remove outside click + Esc listeners
+    let escHandler = null, clickAwayHandler = null;
+    function closeResults(){
+      results.style.display = "none";
+      results.innerHTML = "";
+      document.removeEventListener("keydown", escHandler, true);
+      document.removeEventListener("click", clickAwayHandler, true);
+      escHandler = clickAwayHandler = null;
+    }
+    function openResults(){
+      results.style.display = "block";
+      // prevent closing when clicking inside the results panel itself
+      results.addEventListener("click", (e)=> e.stopPropagation(), { once:false });
+
+      escHandler = (e)=>{ if(e.key === "Escape"){ e.preventDefault(); closeResults(); } };
+      clickAwayHandler = (e)=>{
+        // If click is outside both the subject and its results, close
+        if(!results.contains(e.target) && !subjectWrap.contains(e.target)){
+          closeResults();
+        }
+      };
+      document.addEventListener("keydown", escHandler, true);
+      document.addEventListener("click", clickAwayHandler, true);
+    }
+
     function renderFileRows(files){
       results.querySelectorAll(".resultItem.fileRow, .slidesList").forEach(n=>n.remove());
       if(!files.length){
@@ -518,7 +543,8 @@ function renderWeekTable(cfg, w, links){
         left.innerHTML = `<div><strong>${f.name}</strong></div><small>Last modified ${new Date(f.modifiedTime).toLocaleDateString()}</small>`;
         const pick=document.createElement("button"); pick.className="btn"; pick.textContent="Select";
         row.appendChild(left); row.appendChild(pick);
-        pick.addEventListener("click", async ()=>{
+        pick.addEventListener("click", async (evt)=>{
+          evt.stopPropagation();
           pick.disabled=true; pick.textContent="Loading slides…";
           try{
             const pres = await gapi.client.slides.presentations.get({ presentationId: f.id });
@@ -532,12 +558,13 @@ function renderWeekTable(cfg, w, links){
                 const meta=document.createElement("div"); const human=titleFromSlide(s,i);
                 meta.innerHTML=`<div class="slideTitle">${human}</div><div class="slideMeta">#${i+1}</div>`;
                 const chooseBtn=document.createElement("button"); chooseBtn.className="choose"; chooseBtn.textContent="Choose";
-                chooseBtn.addEventListener("click", ()=>{
+                chooseBtn.addEventListener("click", (ev)=>{
+                  ev.stopPropagation();
                   const all=loadLinksFor(cfg); all[w.n]??={};
                   all[w.n][idx] = { id:f.id, name:f.name, slideId:s.objectId, url:f.webViewLink };
                   saveLinksFor(cfg, all);
                   subjectWrap.innerHTML = `<a class="link" href="${slideLink(f.id, s.objectId)}" target="_blank" rel="noopener">${periodLabel}</a>`;
-                  results.style.display="none";
+                  closeResults();
                 });
                 sr.appendChild(img); sr.appendChild(meta); sr.appendChild(chooseBtn); nested.appendChild(sr);
                 (async ()=>{ const url=await getSlideThumb(f.id, s.objectId); if(url){ img.src=url; img.classList.remove("skel"); } })();
@@ -557,10 +584,11 @@ function renderWeekTable(cfg, w, links){
     }
 
     // Double-click to open typed-search UI
-    subjectWrap.addEventListener("dblclick", async ()=>{
+    subjectWrap.addEventListener("dblclick", async (e)=>{
+      e.stopPropagation();
       try{
         await ensureSignedIn();
-        results.style.display="block";
+        openResults();
         results.innerHTML = "";
 
         const folderId = (loadCfg().periodFolders || [])[idx] || "";
@@ -575,26 +603,18 @@ function renderWeekTable(cfg, w, links){
         results.appendChild(bar);
 
         async function runSearch(){
-          const term = qInput.value.trim();
-          if(!term){
-            // If they didn't type anything, use the subject label as a convenience seed.
-            const fallback = periodLabel;
-            const files = await searchSlides(fallback, folderId || "");
-            renderFileRows(files);
-          }else{
-            const files = await searchSlides(term, folderId || "");
-            renderFileRows(files);
-          }
+          const term = qInput.value.trim() || periodLabel;
+          const files = await searchSlides(term, folderId || "");
+          renderFileRows(files);
         }
+        btnGo.addEventListener("click", (ev)=>{ ev.stopPropagation(); runSearch(); });
+        qInput.addEventListener("keydown", (ev)=>{ if(ev.key==="Enter"){ ev.preventDefault(); ev.stopPropagation(); runSearch(); } });
 
-        btnGo.addEventListener("click", runSearch);
-        qInput.addEventListener("keydown", (e)=>{ if(e.key==="Enter"){ e.preventDefault(); runSearch(); } });
-
-        // Auto-focus so they can type right away
+        // Focus so you can type immediately
         setTimeout(()=> qInput.focus(), 0);
 
       }catch(err){
-        results.style.display="block";
+        openResults();
         results.innerHTML = `<div class="resultItem"><em>Error: ${err.message||err}</em></div>`;
       }
     });
