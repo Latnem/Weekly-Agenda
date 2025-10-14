@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Weekly Agendas — Master Template (Minimal dbl-click linking + typed search)</title>
+<title>Weekly Agendas — Master Template (Folder-aware typed search)</title>
 <style>
   :root{ --ink:#111; --muted:#666; --link:#2166c2; --ring:#1697BB; --bg:#fff; --border:#e5e7eb; }
   html,body{font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial; color:var(--ink); background:#fff; margin:0}
@@ -111,9 +111,9 @@
   .subjectLink[data-clickable="true"]{cursor:pointer;}
   .subjectLink[data-clickable="true"]:hover .muted{color:#333}
 
-  /* Inline search bar inside results */
   .inlineSearch{display:flex; gap:8px; align-items:center; padding:8px 12px; background:#fbfbfb; border-bottom:1px solid #efefef}
-  .inlineSearch input{width:220px}
+  .inlineSearch input{width:260px}
+  .scopeTag{font-size:12px;color:#6b7280}
 </style>
 </head>
 <body>
@@ -158,7 +158,6 @@
     </header>
     <div class="body">
 
-      <!-- Two columns (Sem/Year) | (First/Last) with 6px column gap -->
       <div class="topCols">
         <div class="fieldsForm">
           <div class="fRow">
@@ -375,19 +374,6 @@ function updateAuthUi(){
 }
 
 /* === Drive/Slides helpers === */
-async function listSlidesInFolder(folderId){
-  await ensureSignedIn();
-  const q = [
-    "mimeType='application/vnd.google-apps.presentation'",
-    "trashed=false",
-    `'${folderId}' in parents`
-  ].join(" and ");
-  const res = await gapi.client.drive.files.list({
-    q, pageSize: 20, orderBy: "modifiedTime desc",
-    fields: "files(id,name,modifiedTime,webViewLink)"
-  });
-  return res.result.files || [];
-}
 async function searchSlides(hint, folderId){
   await ensureSignedIn();
   const clauses = [
@@ -405,19 +391,11 @@ async function searchSlides(hint, folderId){
 }
 async function searchFolders(term){
   await ensureSignedIn();
-  const q = [
-    "mimeType='application/vnd.google-apps.folder'",
-    "trashed=false",
-    term ? `name contains '${term.replace(/'/g,"\\'")}'` : null
-  ].filter(Boolean).join(" and ");
-  const res = await gapi.client.drive.files.list({
-    q, pageSize: 10, fields: "files(id,name)"
-  });
+  const q = ["mimeType='application/vnd.google-apps.folder'","trashed=false", term?`name contains '${term.replace(/'/g,"\\'")}'`:null].filter(Boolean).join(" and ");
+  const res = await gapi.client.drive.files.list({ q, pageSize: 10, fields: "files(id,name)" });
   return res.result.files || [];
 }
-function slideLink(fileId, pageObjectId){
-  return `https://docs.google.com/presentation/d/${fileId}/edit#slide=id.${pageObjectId}`;
-}
+function slideLink(fileId, pageObjectId){ return `https://docs.google.com/presentation/d/${fileId}/edit#slide=id.${pageObjectId}`; }
 function titleFromSlide(slide, index){
   const elems = slide.pageElements || [];
   for(const el of elems){
@@ -483,7 +461,7 @@ function chooseDisplayWeek(weeks, now=new Date()){
 function weekActualLabel(w){ return formatRangeFull(w.monday, w.friday); }
 function headerActualLabel(cfg){ return `${cfg.semester || "Semester"} ${cfg.year || "Year"}`; }
 
-/* Render a week table: minimal subject cell with dblclick picker */
+/* Render a week table: dbl-click subject -> typed search (folder-aware) */
 function renderWeekTable(cfg, w, links){
   const table=document.createElement("table"); table.className="grid";
   const thead=document.createElement("thead"); const trh=document.createElement("tr");
@@ -525,13 +503,17 @@ function renderWeekTable(cfg, w, links){
     results.style.display = "none";
 
     function renderFileRows(files){
+      results.querySelectorAll(".resultItem.fileRow, .slidesList").forEach(n=>n.remove());
       if(!files.length){
-        results.innerHTML = `<div class="resultItem"><em>No matches found.</em></div>`;
+        const none = document.createElement("div");
+        none.className = "resultItem fileRow";
+        none.innerHTML = `<em>No matches found.</em>`;
+        results.appendChild(none);
         return;
       }
       const frag = document.createDocumentFragment();
       files.forEach(f=>{
-        const row=document.createElement("div"); row.className="resultItem";
+        const row=document.createElement("div"); row.className="resultItem fileRow";
         const left=document.createElement("div");
         left.innerHTML = `<div><strong>${f.name}</strong></div><small>Last modified ${new Date(f.modifiedTime).toLocaleDateString()}</small>`;
         const pick=document.createElement("button"); pick.className="btn"; pick.textContent="Select";
@@ -574,77 +556,42 @@ function renderWeekTable(cfg, w, links){
       results.appendChild(frag);
     }
 
+    // Double-click to open typed-search UI
     subjectWrap.addEventListener("dblclick", async ()=>{
       try{
         await ensureSignedIn();
         results.style.display="block";
         results.innerHTML = "";
 
-        // Inline search bar (always visible)
+        const folderId = (loadCfg().periodFolders || [])[idx] || "";
+        const scopeText = folderId ? "Searching in selected folder" : "Searching all Drive";
         const bar = document.createElement("div"); bar.className="inlineSearch";
         const qInput = document.createElement("input");
         qInput.type = "search";
-        qInput.placeholder = `Type to search… (e.g., ${periodLabel})`;
-        const btnInFolder = document.createElement("button"); btnInFolder.className="btn"; btnInFolder.textContent="Search in this folder";
-        const btnAllDrive = document.createElement("button"); btnAllDrive.className="btn secondary"; btnAllDrive.textContent="Search all Drive";
-        bar.appendChild(qInput); bar.appendChild(btnInFolder); bar.appendChild(btnAllDrive);
+        qInput.placeholder = folderId ? "Search this folder…" : "Search Drive…";
+        const scope = document.createElement("span"); scope.className="scopeTag"; scope.textContent = scopeText;
+        const btnGo = document.createElement("button"); btnGo.className="btn"; btnGo.textContent = "Search";
+        bar.appendChild(qInput); bar.appendChild(btnGo); bar.appendChild(scope);
         results.appendChild(bar);
 
-        const folderId = (loadCfg().periodFolders || [])[idx] || "";
-
-        // Initial listing logic:
-        if(folderId){
-          const header = document.createElement("div");
-          header.className = "resultItem";
-          header.innerHTML = `<em>Showing all decks in the selected folder (newest first)…</em>`;
-          results.appendChild(header);
-          const files = await listSlidesInFolder(folderId);
-          renderFileRows(files);
-        }else{
-          const header = document.createElement("div");
-          header.className = "resultItem";
-          header.innerHTML = `<em>No folder set. Searching Drive for “${periodLabel}” …</em>`;
-          results.appendChild(header);
-          const files = await searchSlides(periodLabel, "");
-          renderFileRows(files);
-        }
-
-        btnInFolder.addEventListener("click", async ()=>{
-          results.innerHTML = "";
-          results.appendChild(bar);
-          const header = document.createElement("div");
-          header.className = "resultItem";
-          if(!folderId){
-            header.innerHTML = `<em>No folder set for this period. Showing Drive results for “${qInput.value.trim()||periodLabel}”.</em>`;
-            results.appendChild(header);
-            const files = await searchSlides(qInput.value.trim()||periodLabel, "");
+        async function runSearch(){
+          const term = qInput.value.trim();
+          if(!term){
+            // If they didn't type anything, use the subject label as a convenience seed.
+            const fallback = periodLabel;
+            const files = await searchSlides(fallback, folderId || "");
             renderFileRows(files);
           }else{
-            header.innerHTML = `<em>Searching in folder for “${qInput.value.trim()||"*"}” …</em>`;
-            results.appendChild(header);
-            const term = qInput.value.trim();
-            const files = term ? await searchSlides(term, folderId) : await listSlidesInFolder(folderId);
+            const files = await searchSlides(term, folderId || "");
             renderFileRows(files);
           }
-        });
+        }
 
-        btnAllDrive.addEventListener("click", async ()=>{
-          results.innerHTML = "";
-          results.appendChild(bar);
-          const header = document.createElement("div");
-          header.className = "resultItem";
-          header.innerHTML = `<em>Searching all Drive for “${qInput.value.trim()||periodLabel}” …</em>`;
-          results.appendChild(header);
-          const files = await searchSlides(qInput.value.trim()||periodLabel, "");
-          renderFileRows(files);
-        });
+        btnGo.addEventListener("click", runSearch);
+        qInput.addEventListener("keydown", (e)=>{ if(e.key==="Enter"){ e.preventDefault(); runSearch(); } });
 
-        qInput.addEventListener("keydown", async (e)=>{
-          if(e.key === "Enter"){
-            e.preventDefault();
-            btnInFolder.click(); // default to in-folder search if folder exists; otherwise Drive-wide message handles it
-          }
-        });
+        // Auto-focus so they can type right away
+        setTimeout(()=> qInput.focus(), 0);
 
       }catch(err){
         results.style.display="block";
@@ -860,7 +807,7 @@ document.getElementById("saveSettings").addEventListener("click", async ()=>{
 document.getElementById("authBtn").addEventListener("click", async ()=>{ try{ await ensureSignedIn(); }catch(err){ alert("Sign-in failed: "+(err.error||err.message||err)); } });
 document.getElementById("signoutBtn").addEventListener("click", async ()=>{ await signOut(); });
 
-/* Gist silent sync (kept) */
+/* Gist silent sync (optional) */
 function loadGh(){ try{ return JSON.parse(localStorage.getItem(LS_KEY_GH)||"{}"); }catch{ return {}; } }
 function saveGh(obj){ localStorage.setItem(LS_KEY_GH, JSON.stringify(obj)); }
 async function gistRequest(method, path, body, token){
