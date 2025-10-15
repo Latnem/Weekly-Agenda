@@ -120,6 +120,16 @@
   .gistBadge{display:inline-flex; align-items:center; gap:6px; padding:4px 10px; border:1px solid #cbd5e1; border-radius:999px; background:#f1f5f9; font-size:12px}
   #gistToken{ width:220px; } /* narrower token input */
   #gistId{ width:260px; }
+
+  /* Make "Connect Gist" button fit its content */
+  #gistSave{
+    width:auto;
+    inline-size:auto;
+    max-width:fit-content;
+    white-space:nowrap;
+    padding:6px 10px;
+    justify-self:start;
+  }
 </style>
 </head>
 <body>
@@ -972,7 +982,8 @@ function renderFolderChoosers(cfg){
     const right=document.createElement("div");
 
     const currentId   = tempFolderIds[i] || cfg.periodFolders[i] || "";
-    const currentName = tempFolderNames[i] || cfg.periodFolderNames?.[i] || "";
+    theName = tempFolderNames[i] || cfg.periodFolderNames?.[i] || "";
+    const currentName = theName;
 
     const search=document.createElement("input"); search.type="search"; search.className="long half"; search.placeholder="Search Drive folder";
     const findBtn=document.createElement("button"); findBtn.className="btn"; findBtn.textContent="Find folder";
@@ -1063,7 +1074,8 @@ function openModal(){
   tempFolderNames=[...(cfg.periodFolderNames||["","","","","",""])];
   renderFolderChoosers(cfg);
   setFolderCollapsed(true);
-  gistTokenInp.value=""; gistIdInp.value="";
+  document.getElementById("gistToken").value="";
+  document.getElementById("gistId").value="";
   gistStatusRow.style.display="none";
   showHideGistBlock();
   modal.style.display="flex";
