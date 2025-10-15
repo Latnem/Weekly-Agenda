@@ -4,7 +4,7 @@
 <meta charset="utf-8" />
 <meta http-equiv="Referrer-Policy" content="strict-origin-when-cross-origin">
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Weekly Agendas — Google Sign-in Fix</title>
+<title>Weekly Agendas — Drive AppData Sync + Folder Names</title>
 <style>
   :root{ --ink:#111; --muted:#666; --link:#2166c2; --ring:#1697BB; --bg:#fff; --border:#e5e7eb; }
   html,body{font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial; color:var(--ink); background:#fff; margin:0}
@@ -119,9 +119,10 @@
   <header>
     <h1 class="title-underline">Click Links to Access Weekly Agendas</h1>
     <button id="openSettings" class="iconBtn" title="Customize master template">
+      <!-- Gear — Outline (8-teeth) -->
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
         <path d="M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z"/>
-        <path d="M19 12a7 7 0 0 0-.08-.98l2.02-1.57-2-3.46-2.4.7a7 7 0 0 0-1.7-.99L14.5 3h-5l-.34 2.7a7 7 0 0 0-1.7.99l-2.4-.7-2 3.46 2.02 1.57A7 7 0 0 0 5 12c0 .33.03.65.08.98l-2.02 1.57 2 3.46 2.4-.7c.52.41 1.1.75 1.7.99l.34 2.7h5l.34-2.7c.6-.24 1.18-.58 1.7-.99l2.4.7 2-3.46-2.02-1.57c.05-.33.08-.65.08-.98Z"/>
+        <path d="M19 12a7 7 0 0 0-.08-.98l2.02-1.57-2-3.46-2.4.7a7 7 0 0 0-1.7-.99L14.5 3h-5l-.34 2.7a7 7 0 0 0-1.7.99l-2.4-.7-2 3.46 2.02 1.57A7 7 0 0 0 5 12c0 .33.03 .65.08 .98l-2.02 1.57 2 3.46 2.4-.7c.52 .41 1.1 .75 1.7 .99l.34 2.7h5l.34-2.7c.6-.24 1.18-.58 1.7-.99l2.4 .7 2-3.46-2.02-1.57c.05-.33 .08-.65 .08-.98Z"/>
       </svg>
       Settings
     </button>
@@ -220,12 +221,12 @@
   </div>
 </div>
 
-<!-- Google APIs (load both; we’ll enable the button only after both are ready) -->
+<!-- Google APIs -->
 <script src="https://apis.google.com/js/api.js" async defer></script>
 <script src="https://accounts.google.com/gsi/client" async defer></script>
 
 <script>
-/* ===== Your Google config ===== */
+/* ===== Google config (includes AppData scope) ===== */
 const GOOGLE = {
   API_KEY: "AIzaSyDWnOao76tK1ecBGfL21ZLxBDvChqlGrx0",
   CLIENT_ID: "462034083093-75pc8bgfieivcrkc6275vgahg44qhvvh.apps.googleusercontent.com",
@@ -233,7 +234,10 @@ const GOOGLE = {
     "https://www.googleapis.com/discovery/v1/apis/drive/v3/rest",
     "https://slides.googleapis.com/$discovery/rest?version=v1"
   ],
-  SCOPES: "https://www.googleapis.com/auth/drive.readonly https://www.googleapis.com/auth/presentations.readonly",
+  SCOPES:
+    "https://www.googleapis.com/auth/drive.readonly " +
+    "https://www.googleapis.com/auth/presentations.readonly " +
+    "https://www.googleapis.com/auth/drive.appdata",
   authed: false,
 };
 
@@ -244,8 +248,16 @@ const LS_KEY_BASELINE= "agenda_master_baseline_v1";
 const LS_KEY_GH      = "agenda_github_sync_v1";
 const LS_KEY_AUTH    = "agenda_auth_meta_v1";
 
-/* ===== Neutral defaults ===== */
-const NEUTRAL_CFG = { semester:"", year:"", periods:["","","","","",""], periodFolders:["","","","","",""], firstMonday:"", lastFriday:"", skipWeeks:[], labelsFinalized:false };
+/* ===== Neutral defaults (now include periodFolderNames) ===== */
+const NEUTRAL_CFG = {
+  semester:"", year:"",
+  periods:["","","","","",""],
+  periodFolders:["","","","","",""],
+  periodFolderNames:["","","","","",""],
+  firstMonday:"", lastFriday:"",
+  skipWeeks:[],
+  labelsFinalized:false
+};
 
 function saveAuthMeta(m){ localStorage.setItem(LS_KEY_AUTH, JSON.stringify(m||{})); }
 function loadAuthMeta(){ try { return JSON.parse(localStorage.getItem(LS_KEY_AUTH)||"{}"); } catch { return {}; } }
@@ -274,6 +286,7 @@ function loadCfg(){ const raw = localStorage.getItem(LS_KEY_CFG); if(!raw) retur
     cfg.semester ??=""; cfg.year ??="";
     if(!Array.isArray(cfg.periods)||cfg.periods.length!==6) cfg.periods=["","","","","",""];
     if(!Array.isArray(cfg.periodFolders)||cfg.periodFolders.length!==6) cfg.periodFolders=["","","","","",""];
+    if(!Array.isArray(cfg.periodFolderNames)||cfg.periodFolderNames.length!==6) cfg.periodFolderNames=["","","","","",""]; // ensure names
     cfg.firstMonday ??=""; cfg.lastFriday ??="";
     if(!Array.isArray(cfg.skipWeeks)) cfg.skipWeeks=[];
     cfg.labelsFinalized = !!cfg.labelsFinalized; return cfg;
@@ -298,7 +311,6 @@ function setAuthUiState({enabled, text, error}){
   if (text) authBtn.textContent = text;
   if (error){ errEl.style.display="inline-block"; errEl.textContent = error; } else { errEl.style.display="none"; errEl.textContent=""; }
 }
-
 async function loadGapiClient(){
   if (gapiReady) return;
   await new Promise((resolve,reject)=>{
@@ -320,7 +332,6 @@ async function loadGapiClient(){
     tick();
   });
 }
-
 async function loadGis(){
   if (gisReady) return;
   await new Promise((resolve,reject)=>{
@@ -337,7 +348,6 @@ async function loadGis(){
     tick();
   });
 }
-
 async function initAuth(){
   await loadGapiClient();
   await loadGis();
@@ -346,11 +356,7 @@ async function initAuth(){
     client_id: GOOGLE.CLIENT_ID,
     scope: GOOGLE.SCOPES,
     callback: async (resp) => {
-      // Handles both silent and interactive responses
-      if (resp && resp.error) {
-        setAuthUiState({error: resp.error_description || resp.error});
-        return;
-      }
+      if (resp && resp.error) { setAuthUiState({error: resp.error_description || resp.error}); return; }
       if (!resp || !resp.access_token) return;
 
       gapi.client.setToken({ access_token: resp.access_token });
@@ -369,25 +375,19 @@ async function initAuth(){
   });
   return tokenClient;
 }
-
 async function trySilentSignIn(){
   try{
     await initAuth();
     const meta = loadAuthMeta();
     tokenClient.requestAccessToken({ prompt:"", login_hint: meta.email || undefined });
-    // Wait briefly to see if a token appears
     return await new Promise(resolve=>{
       const start=Date.now();
       const check=()=>{ const tok=gapi.client.getToken?.(); if(tok && tok.access_token) return resolve(true);
         if(Date.now()-start>1500) return resolve(false); setTimeout(check,50); };
       check();
     });
-  }catch(e){
-    console.warn("Silent sign-in failed:", e);
-    return false;
-  }
+  }catch(e){ console.warn("Silent sign-in failed:", e); return false; }
 }
-
 async function ensureSignedIn(){
   try{
     await initAuth();
@@ -408,7 +408,6 @@ async function ensureSignedIn(){
     return false;
   }
 }
-
 async function signOut(){
   try{
     const tok = gapi.client.getToken?.();
@@ -420,7 +419,6 @@ async function signOut(){
     const meta=loadAuthMeta(); saveAuthMeta({ email: meta.email || "", granted:false }); updateAuthUi();
   }
 }
-
 function scheduleSilentRefresh(){
   if (refreshTimer) clearInterval(refreshTimer);
   refreshTimer = setInterval(async ()=>{
@@ -428,7 +426,6 @@ function scheduleSilentRefresh(){
     const ok = await trySilentSignIn(); if(ok){ GOOGLE.authed=true; updateAuthUi(); }
   }, 45*60*1000);
 }
-
 function updateAuthUi(){
   const meta = loadAuthMeta();
   const email = (meta && meta.email) ? meta.email : "";
@@ -491,8 +488,91 @@ async function getSlideThumb(presentationId, pageObjectId){
     }catch{ return ""; }
   }
 }
+async function fetchFolderNameById(id){
+  if(!id) return "";
+  try{
+    await ensureSignedIn();
+    const r = await gapi.client.drive.files.get({ fileId:id, fields:"id,name" });
+    return r?.result?.name || "";
+  }catch{ return ""; }
+}
 
-/* ===== Weeks build & render (unchanged) ===== */
+/* ===== Cloud Sync (Drive AppData) ===== */
+const SYNC_FILE_NAME = "weekly-agenda-sync.json";
+function buildSyncPayload(){
+  const cfg = loadCfg();
+  let allLinks = {};
+  try { allLinks = JSON.parse(localStorage.getItem(LS_KEY_LINKS) || "{}"); } catch {}
+  return { cfg, linksBySemester: allLinks, updatedAt: new Date().toISOString() };
+}
+function applyCloudPayload(payload){
+  if (!payload || typeof payload !== "object") return;
+  if (payload.cfg) saveCfg(payload.cfg);
+  if (payload.linksBySemester) localStorage.setItem(LS_KEY_LINKS, JSON.stringify(payload.linksBySemester));
+}
+async function getOrCreateAppDataFileId(createIfMissing=false){
+  await ensureSignedIn();
+  const list = await gapi.client.drive.files.list({
+    spaces: "appDataFolder",
+    q: `name='${SYNC_FILE_NAME}' and trashed=false`,
+    fields: "files(id,name)"
+  });
+  const found = (list.result.files || [])[0];
+  if (found) return found.id;
+  if (!createIfMissing) return null;
+
+  const metadata = { name: SYNC_FILE_NAME, parents: ["appDataFolder"], mimeType: "application/json" };
+  const media = JSON.stringify({ createdAt: new Date().toISOString() });
+  const body = buildMultipartBody(metadata, media, "application/json");
+  const res = await gapi.client.request({
+    path: "/upload/drive/v3/files",
+    method: "POST",
+    params: { uploadType: "multipart" },
+    headers: { "Content-Type": `multipart/related; boundary=${body.boundary}` },
+    body: body.body
+  });
+  return res.result.id;
+}
+async function readSyncFromDrive(){
+  try{
+    const fileId = await getOrCreateAppDataFileId(false);
+    if (!fileId) return null;
+    const meta = await gapi.client.drive.files.get({ fileId, alt: "media" });
+    return meta.result || null;
+  }catch(e){ console.warn("readSyncFromDrive error:", e); return null; }
+}
+async function writeSyncToDrive(payload){
+  try{
+    const fileId = await getOrCreateAppDataFileId(true);
+    const metadata = { mimeType: "application/json" };
+    const media = JSON.stringify(payload);
+    const body = buildMultipartBody(metadata, media, "application/json");
+    const res = await gapi.client.request({
+      path: "/upload/drive/v3/files/" + fileId,
+      method: "PATCH",
+      params: { uploadType: "multipart" },
+      headers: { "Content-Type": `multipart/related; boundary=${body.boundary}` },
+      body: body.body
+    });
+    return !!res.result;
+  }catch(e){ console.warn("writeSyncToDrive error:", e); return false; }
+}
+function buildMultipartBody(metadataObj, mediaText, mediaType){
+  const boundary = "-------314159265358979323846";
+  const delimiter = "\r\n--" + boundary + "\r\n";
+  const closeDelim = "\r\n--" + boundary + "--";
+  const body =
+    delimiter +
+    "Content-Type: application/json; charset=UTF-8\r\n\r\n" +
+    JSON.stringify(metadataObj) + "\r\n" +
+    delimiter +
+    "Content-Type: " + (mediaType || "text/plain") + "\r\n\r\n" +
+    mediaText +
+    closeDelim;
+  return { boundary, body };
+}
+
+/* ===== Weeks build & render ===== */
 function buildWeeks(cfg){
   const startRaw = toDateAtMidnight(cfg.firstMonday);
   const endRaw   = toDateAtMidnight(cfg.lastFriday);
@@ -622,11 +702,16 @@ function renderWeekTable(cfg, w, links){
                 const meta=document.createElement("div"); const human=titleFromSlide(s,i);
                 meta.innerHTML=`<div class="slideTitle">${human}</div><div class="slideMeta">#${i+1}</div>`;
                 const chooseBtn=document.createElement("button"); chooseBtn.className="choose"; chooseBtn.textContent="Choose";
-                chooseBtn.addEventListener("click", (ev)=>{
+                chooseBtn.addEventListener("click", async (ev)=>{
                   ev.stopPropagation();
                   const all=loadLinksFor(cfg); all[w.n]??={};
                   all[w.n][idx] = { id:f.id, name:f.name, slideId:s.objectId, url:f.webViewLink };
                   saveLinksFor(cfg, all);
+
+                  if (GOOGLE.authed) {
+                    writeSyncToDrive(buildSyncPayload()).catch(()=>console.warn("Drive sync (link) failed"));
+                  }
+
                   subjectWrap.innerHTML = `<a class="link" href="${slideLink(f.id, s.objectId)}" target="_blank" rel="noopener">${periodLabel}</a>`;
                   closeResults();
                 });
@@ -701,9 +786,13 @@ function renderWeekTable(cfg, w, links){
     if(e.key==="Enter" && !e.shiftKey){ e.preventDefault(); finalizeNotes(); }
     else if(e.key==="Escape"){ e.preventDefault(); notesDiv.textContent=savedNotes; exitEdit(); }
   });
-  function finalizeNotes(){
+  async function finalizeNotes(){
     const txt=notesDiv.textContent||"";
-    const all=loadLinksFor(cfg); all[w.n]=all[w.n]||{}; all[w.n].notes=txt; saveLinksFor(cfg, all); exitEdit();
+    const all=loadLinksFor(cfg); all[w.n]=all[w.n]||{}; all[w.n].notes=txt; saveLinksFor(cfg, all);
+    if (GOOGLE.authed) {
+      writeSyncToDrive(buildSyncPayload()).catch(()=>console.warn("Drive sync (notes) failed"));
+    }
+    exitEdit();
   }
   function exitEdit(){ notesDiv.contentEditable="false"; notesDiv.classList.remove("isEditing"); }
   tNotes.appendChild(notesDiv); tr.appendChild(tNotes);
@@ -755,7 +844,7 @@ function renderAll(){
   }
 }
 
-/* ===== Settings wiring (unchanged) ===== */
+/* ===== Settings wiring (now with folder names) ===== */
 const modal=document.getElementById("settingsModal");
 const openSettings=document.getElementById("openSettings");
 const closeSettings=document.getElementById("closeSettings");
@@ -774,7 +863,8 @@ const lastFridayInp=document.getElementById("lastFriday");
 const skipRowsWrap=document.getElementById("skipRows");
 const addSkipBtn=document.getElementById("addSkip");
 
-let tempFolderIds=["","","","","",""]; let tempFolderNames=["","","","","",""];
+let tempFolderIds=["","","","","",""]; 
+let tempFolderNames=["","","","","",""];
 
 function fillPeriodInputs(periods){
   periodInputsWrap.innerHTML="";
@@ -791,37 +881,72 @@ function fillPeriodInputs(periods){
   const wrap=document.createElement("div"); wrap.className="twoCols"; wrap.appendChild(left); wrap.appendChild(right);
   periodInputsWrap.appendChild(wrap);
 }
+
 function renderFolderChoosers(cfg){
   folderChooserArea.innerHTML="";
   for(let i=0;i<6;i++){
     const wrap=document.createElement("div"); wrap.className="folderRow";
     const lab=document.createElement("div"); lab.textContent=`Period ${i+1}`;
     const right=document.createElement("div");
-    const currentId=tempFolderIds[i] || cfg.periodFolders[i] || ""; const currentName=tempFolderNames[i] || "";
+
+    const currentId   = tempFolderIds[i] || cfg.periodFolders[i] || "";
+    const currentName = tempFolderNames[i] || cfg.periodFolderNames?.[i] || "";
+
     const search=document.createElement("input"); search.type="search"; search.className="long"; search.placeholder="Search Drive folder";
     const findBtn=document.createElement("button"); findBtn.className="btn"; findBtn.textContent="Find folder";
     const clearBtn=document.createElement("button"); clearBtn.className="btn secondary"; clearBtn.textContent="Clear";
-    const selBox=document.createElement("div"); if(currentId){ selBox.className="folderBadge"; selBox.innerHTML=`<span>Selected:</span> <code>${currentName || currentId}</code>`; }
+
+    const selBox=document.createElement("div");
+    if(currentId){
+      selBox.className="folderBadge";
+      selBox.innerHTML=`<span>Selected:</span> <code>${currentName || "(Resolving…)"}</code>`;
+      if(currentId && !currentName){
+        (async ()=>{
+          const nm = await fetchFolderNameById(currentId);
+          if(nm){
+            tempFolderNames[i] = nm;
+            selBox.innerHTML=`<span>Selected:</span> <code>${nm}</code>`;
+            selBox.className="folderBadge";
+          }
+        })();
+      }
+    }
+
     const results=document.createElement("div"); results.className="results"; results.style.display="none";
     findBtn.addEventListener("click", async ()=>{
       results.style.display="block"; results.innerHTML=`<div class="resultItem"><em>Searching…</em></div>`;
       try{
         const term=search.value.trim(); const items=await searchFolders(term);
         if(!items.length){ results.innerHTML=`<div class="resultItem"><em>No folders found.</em></div>`; return; }
-        results.innerHTML=""; items.forEach(f=>{
+        results.innerHTML="";
+        items.forEach(f=>{
           const row=document.createElement("div"); row.className="resultItem";
           const left=document.createElement("div"); left.innerHTML=`<div><strong>${f.name}</strong></div><small>ID: ${f.id}</small>`;
           const pick=document.createElement("button"); pick.className="btn"; pick.textContent="Use this folder";
-          pick.addEventListener("click",()=>{ tempFolderIds[i]=f.id; tempFolderNames[i]=f.name; selBox.className="folderBadge"; selBox.innerHTML=`<span>Selected:</span> <code>${f.name}</code>`; results.style.display="none"; });
+          pick.addEventListener("click",()=>{
+            tempFolderIds[i]=f.id;
+            tempFolderNames[i]=f.name;
+            selBox.className="folderBadge";
+            selBox.innerHTML=`<span>Selected:</span> <code>${f.name}</code>`;
+            results.style.display="none";
+          });
           row.appendChild(left); row.appendChild(pick); results.appendChild(row);
         });
       }catch(e){ results.innerHTML=`<div class="resultItem"><em>Error: ${e.message||e}</em></div>`; }
     });
-    clearBtn.addEventListener("click",()=>{ tempFolderIds[i]=""; tempFolderNames[i]=""; selBox.className=""; selBox.innerHTML=""; });
-    right.appendChild(search); right.appendChild(findBtn); right.appendChild(clearBtn); right.appendChild(selBox); right.appendChild(results);
+
+    clearBtn.addEventListener("click",()=>{
+      tempFolderIds[i]="";
+      tempFolderNames[i]="";
+      selBox.className=""; selBox.innerHTML="";
+    });
+
+    right.appendChild(search); right.appendChild(findBtn); right.appendChild(clearBtn);
+    right.appendChild(selBox); right.appendChild(results);
     wrap.appendChild(lab); wrap.appendChild(right); folderChooserArea.appendChild(wrap);
   }
 }
+
 function renderSkipRows(skipWeeks){ const wrap=document.getElementById("skipRows"); wrap.innerHTML=""; if(skipWeeks&&skipWeeks.length){ skipWeeks.forEach(({from,to})=> addSkipRow(from,to)); } }
 function addSkipRow(from="",to=""){
   const row=document.createElement("div"); row.className="skipRow";
@@ -841,14 +966,30 @@ function setFolderCollapsed(collapsed){ const expanded=!collapsed; folderToggle.
 folderToggle.addEventListener("click",()=> setFolderCollapsed(folderChooserWrap.style.display!=="none"));
 folderToggle.addEventListener("keydown",(e)=>{ if(e.key===" "||e.key==="Enter"){ e.preventDefault(); setFolderCollapsed(folderChooserWrap.style.display!=="none"); } });
 
-function openModal(){
+async function openModal(){
   const cfg=loadCfg();
   semesterSel.value=cfg.semester||""; yearInput.value=cfg.year||"";
   document.getElementById("firstMonday").value=cfg.firstMonday||"";
   document.getElementById("lastFriday").value=cfg.lastFriday||"";
   fillPeriodInputs(cfg.periods||["","","","","",""]); renderSkipRows(cfg.skipWeeks||[]);
-  tempFolderIds=[...(cfg.periodFolders||["","","","","",""])]; tempFolderNames=["","","","","",""]; renderFolderChoosers(cfg);
-  setFolderCollapsed(true); modal.style.display="flex";
+
+  // Prepare temp arrays; and resolve any missing names from IDs once
+  tempFolderIds=[...(cfg.periodFolders||["","","","","",""])];
+  tempFolderNames=[...(cfg.periodFolderNames||["","","","","",""])];
+  const lookups=[];
+  for(let i=0;i<6;i++){
+    if (tempFolderIds[i] && !tempFolderNames[i]) {
+      lookups.push((async (idx)=>{
+        const nm = await fetchFolderNameById(tempFolderIds[idx]);
+        if(nm){ tempFolderNames[idx]=nm; }
+      })(i));
+    }
+  }
+  await Promise.all(lookups);
+
+  renderFolderChoosers(cfg);
+  setFolderCollapsed(true); 
+  modal.style.display="flex";
 }
 function closeModal(){ modal.style.display="none"; }
 
@@ -871,58 +1012,56 @@ document.getElementById("loadBaseline").addEventListener("click", ()=>{
 
 document.getElementById("saveSettings").addEventListener("click", async ()=>{
   const periods=[]; const inputs=document.querySelectorAll("#periodInputs input[type='text']"); inputs.forEach(inp=>{ periods[+inp.dataset.idx]=(inp.value||"").trim(); });
+
+  // Merge names appropriately based on currently chosen IDs
+  const prev = loadCfg();
+  const resolvedNames = [];
+  for(let i=0;i<6;i++){
+    resolvedNames[i] = tempFolderIds[i] ? (tempFolderNames[i] || prev.periodFolderNames?.[i] || "") : "";
+  }
+
   const next={
     semester: semesterSel.value||"",
     year: (document.getElementById("yearInput").value||"").trim(),
     periods,
     periodFolders: tempFolderIds,
+    periodFolderNames: resolvedNames,
     firstMonday: (document.getElementById("firstMonday").value||""),
     lastFriday:  (document.getElementById("lastFriday").value ||""),
     skipWeeks: collectSkipRows(),
     labelsFinalized:true
   };
+
   saveCfg(next); closeModal(); renderAll();
+
+  if (GOOGLE.authed) {
+    const ok = await writeSyncToDrive(buildSyncPayload());
+    if (!ok) console.warn("Drive sync (settings) failed");
+  }
 });
 
 /* ===== Auth buttons ===== */
 document.getElementById("authBtn").addEventListener("click", async ()=>{
   setAuthUiState({error:null});
   const ok = await ensureSignedIn();
-  if (!ok){
-    // keep message from ensureSignedIn
-  }
+  if (!ok) return;
+
+  // Pull cloud after interactive login
+  const cloud = await readSyncFromDrive();
+  if (cloud) { applyCloudPayload(cloud); renderAll(); }
 });
 document.getElementById("signoutBtn").addEventListener("click", async ()=>{ await signOut(); });
 
-/* ===== Optional Gist silent sync (no UI here) ===== */
-function loadGh(){ try{ return JSON.parse(localStorage.getItem(LS_KEY_GH)||"{}"); }catch{ return {}; } }
-function saveGh(obj){ localStorage.setItem(LS_KEY_GH, JSON.stringify(obj)); }
-async function gistRequest(method, path, body, token){
-  const res=await fetch(`https://api.github.com${path}`,{ method, headers:{ "Accept":"application/vnd.github+json","Authorization":`Bearer ${token}`,"Content-Type":"application/json"}, body: body?JSON.stringify(body):undefined });
-  if(!res.ok) return null; try{ return await res.json(); }catch{ return null; }
-}
-function exportAllData(){ const cfg=loadCfg(); let allLinks={}; try{ allLinks=JSON.parse(localStorage.getItem(LS_KEY_LINKS)||"{}"); }catch{} return { cfg, linksBySemester: allLinks }; }
-async function silentSaveToGistIfConfigured(){
-  const gh=loadGh(); const token=(gh.token||"").trim(); const gistId=(gh.gistId||"").trim(); if(!token) return;
-  const data=exportAllData(); const files={ "agenda-config.json":{content:JSON.stringify(data.cfg,null,2)}, "agenda-links.json":{content:JSON.stringify(data.linksBySemester,null,2)} };
-  if(gistId){ const updated=await gistRequest("PATCH",`/gists/${gistId}`,{files},token); if(updated && updated.id && updated.id!==gistId){ saveGh({token,gistId:updated.id}); } }
-  else { const created=await gistRequest("POST",`/gists`,{description:"Weekly Agendas — sync", public:false, files},token); if(created && created.id){ saveGh({token,gistId:created.id}); } }
-}
-
-/* ===== Init: wait for BOTH libraries before enabling button; then try silent sign-in ===== */
+/* ===== Init: wait for libs; silent sign-in; render; pull cloud if authed ===== */
 (async function initOnLoad(){
   try{
     if(!localStorage.getItem(LS_KEY_CFG)) saveCfg({...NEUTRAL_CFG});
 
-    // Wait until both libraries signal ready
     await loadGapiClient();
     await loadGis();
-
-    // Now safe to init token client and enable button
     await initAuth();
     setAuthUiState({enabled:true, text:"Connect Google Drive", error:null});
 
-    // If user previously granted, attempt silent re-auth
     const meta = loadAuthMeta();
     if (meta.granted){
       const ok = await trySilentSignIn();
@@ -932,6 +1071,11 @@ async function silentSaveToGistIfConfigured(){
     updateAuthUi();
     scheduleSilentRefresh();
     renderAll();
+
+    if (GOOGLE.authed) {
+      const cloud = await readSyncFromDrive();
+      if (cloud) { applyCloudPayload(cloud); renderAll(); }
+    }
   }catch(e){
     const msg = (e && (e.error_description || e.message)) || String(e);
     setAuthUiState({enabled:false, text:"Google failed to load", error: msg});
