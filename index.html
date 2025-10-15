@@ -1,0 +1,1224 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta http-equiv="Referrer-Policy" content="strict-origin-when-cross-origin">
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Weekly Agendas — Drive AppData + Optional Gist Backup</title>
+<style>
+  :root{ --ink:#111; --muted:#666; --link:#2166c2; --ring:#1697BB; --bg:#fff; --border:#e5e7eb; }
+  html,body{font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial; color:var(--ink); background:#fff; margin:0}
+  .wrap{max-width:1100px;margin:32px auto;padding:0 16px; position:relative}
+
+  header{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;margin-bottom:16px;flex-wrap:wrap}
+  .title-underline{
+    font-weight:800; letter-spacing:.2px; font-size:28px; display:inline-block;
+    padding-bottom:8px; border-bottom:10px solid #111; line-height:1.15; margin:0; white-space:nowrap;
+  }
+  .actions{display:flex; flex-direction:column; align-items:flex-end; gap:8px; position:relative}
+  .actions .topRow{display:flex; align-items:center; gap:8px;}
+  .iconBtn{border:1px solid var(--border); background:#fff; border-radius:10px; padding:8px 10px; cursor:pointer; display:inline-flex; align-items:center; gap:8px;}
+  .iconBtn svg{width:18px;height:18px}
+  #editStatePill{position:relative; top:0; right:0}
+  .pill{font-size:12px; border:1px solid #ddd; padding:2px 8px; border-radius:999px; color:#333; background:#fafafa}
+  #editStatePill.enabled  { background:#e8f8ed; color:#0f5c26; border-color:#0a7e2a33; }
+  #editStatePill.disabled { background:#f3f4f6; color:#374151; border-color:#e5e7eb; }
+
+  .toolbar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:6px 0 18px}
+  .btn{border:1px solid var(--ring); color:#084b5a; padding:8px 12px; border-radius:10px; background:#e9f6fb; cursor:pointer; font-weight:600; margin:4px}
+  .btn.secondary{border-color:#ddd;background:#fafafa;color:#222}
+  .btn:disabled{opacity:.55; cursor:not-allowed}
+  .err{color:#b91c1c}
+
+  .empty{padding:20px 24px; border:1px dashed var(--border); border-radius:12px; color:#555; background:#fafafa; white-space:nowrap; overflow-x:auto; width:fit-content; max-width:min(90vw, 620px); display:block; margin:8px 0; box-sizing:border-box; text-align:left;}
+
+  .sectionRule{ height:2px; background:#d1d5db; width:min(420px, 90%); margin:18px auto 6px; border-radius:2px; }
+
+  .grid{border:2px solid #000; border-collapse:collapse; width:100%}
+  .grid th,.grid td{border:1px solid #000; padding:10px 12px; vertical-align:top}
+  .grid th{font-weight:700; text-align:left; background:#fafafa}
+  .sub{font-size:12px;color:#444;margin-top:2px}
+  .note{font-size:13px;color:#444;line-height:1.35; white-space:pre-wrap}
+  .note.isEditing{ outline:2px solid rgba(234,179,8,.6); background:#FFFBEB; border-radius:6px; padding:4px; }
+
+  .weekHdr{display:flex; align-items:baseline; gap:12px; margin:28px 0 8px}
+  .wkTitle{font-weight:800; font-size:18px}
+  .wkLabel{font-weight:400; font-size:16px; white-space:nowrap}
+
+  .badge{ border:1px solid transparent; background:#eee; color:#111; padding:2px 8px; border-radius:999px; font-size:12px; font-weight:700; }
+  .badge--current{  border-color:#0a7e2a33; background:#e8f8ed; color:#0f5c26; }
+  .badge--upcoming{ border-color:#1d4ed833; background:#e6f0ff; color:#1d4ed8; }
+  .badge--past{     border-color:#b91c1c33; background:#ffecec; color:#b91c1c; }
+
+  .link{color:var(--link); text-decoration:underline; cursor:pointer}
+  .muted{color:#666}
+  .dblHint{ font-size:11px; color:#9CA3AF; margin-top:4px; }
+
+  input[type="search"], input[type="text"], select, input[type="number"], input[type="date"]{
+    border:1px solid #ccc; border-radius:10px; padding:8px 10px; width:140px; min-width:120px; outline:none; background:#fff;
+  }
+  input.long{width:260px} input.half{width:130px} input.full{width:100%} input::placeholder{ color:#888; }
+  input:focus, select:focus{border-color:var(--ring); box-shadow:0 0 0 3px #1697bb33}
+  #yearInput{ width:6.5ch; min-width:5.5ch; max-width:8ch; }
+
+  .results{margin-top:8px; border:1px solid #e5e5e5; border-radius:10px; overflow:hidden}
+  .resultItem{padding:10px 12px; border-top:1px solid #efefef; display:flex; justify-content:space-between; align-items:center; gap:12px}
+  .resultItem:first-child{border-top:none}
+  .slideTitle{font-size:13px; color:#333}
+  .slideMeta{font-size:12px; color:#777}
+  .choose{padding:8px 12px; border-radius:8px; border:1px solid #cbd5e1; background:#fff; cursor:pointer; margin:4px}
+  .slidesList{border-top:1px solid #eee; margin-top:8px; padding-top:8px}
+  .slideRow{display:grid; grid-template-columns: 140px 1fr auto; align-items:center; gap:12px; padding:8px 0; border-top:1px dashed #eee}
+  .slideRow:first-child{border-top:none}
+  .thumb{ width:140px; height:79px; border:1px solid #e5e7eb; border-radius:8px; object-fit:cover; background:#f3f4f6; }
+  .thumb.skel{ animation: pulse 1.2s ease-in-out infinite; filter: saturate(.2) blur(.2px); }
+  @keyframes pulse { 0%{opacity:.65} 50%{opacity:1} 100%{opacity:.65} }
+
+  .modalBackdrop{position:fixed; inset:0; background:rgba(0,0,0,.35); display:none; align-items:center; justify-content:center; z-index:50;}
+  .modal{ width:min(980px,92vw); background:#fff; border-radius:16px; border:1px solid var(--border); box-shadow:0 10px 30px rgba(0,0,0,.15); }
+  .modal header{padding:14px 16px; border-bottom:1px solid var(--border); display:flex; justify-content:space-between; align-items:center}
+  .modal h2{margin:0; font-size:18px}
+  .modal .body{padding:16px}
+
+  .topCols{display:grid; grid-template-columns: 1fr 1fr; column-gap:6px; row-gap:10px; align-items:start; margin-bottom:8px;}
+  @media (max-width:720px){ .topCols{ grid-template-columns:1fr; } }
+  .fieldsForm{display:flex; flex-direction:column; gap:8px;}
+  .fRow{display:grid; grid-template-columns:110px 1fr; align-items:center; gap:6px;}
+  .fRow label{font-size:13px; color:#333; text-align:center; white-space:nowrap;}
+  .fieldsForm.compact .fRow{ grid-template-columns:100px 1fr; }
+
+  .twoCols{display:grid; grid-template-columns:1fr 1fr; gap:16px; align-items:start}
+  @media (max-width: 720px){ .twoCols{ grid-template-columns: 1fr; } }
+  .periodCol{display:flex; flex-direction:column; gap:10px}
+  .periodCol.right{margin-left:10px;}
+  .pRow{display:grid; grid-template-columns:100px 1fr; align-items:center; gap:6px;}
+  .pRow label{font-size:13px; color:#333; white-space:nowrap; text-align:center;}
+
+  .collapsibleHead{display:inline-flex; align-items:center; gap:8px; cursor:pointer; user-select:none; padding:8px 10px; border:1px solid var(--border); border-radius:10px; background:#fafafa; margin-top:16px; width:fit-content; max-width:min(520px, 92%);}
+  .chev{transition: transform .18s ease; width:14px; height:14px; display:inline-block}
+  .collapsibleHead[aria-expanded="true"] .chev{ transform: rotate(90deg); }
+
+  .folderRow{display:grid; grid-template-columns: 110px 1fr auto; gap:10px; align-items:center; margin:6px 0;}
+  .folderRow > div:first-child{font-size:13px; color:#333; text-align:center;}
+  .folderBadge{display:inline-flex; align-items:center; gap:8px; padding:4px 10px; border:1px solid #d1d5db; border-radius:999px; background:#f8fafc; font-size:12px}
+  .folderBadge code{font-family:ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono"; font-size:11px; color:#334155}
+  .folderRow input.long{margin:4px 8px 4px 0;}
+  .folderRow .btn{margin:4px 8px 4px 0;}
+
+  .modal footer{padding:14px 16px; border-top:1px solid var(--border); display:flex; justify-content:space-between; align-items:center; gap:8px; flex-wrap:wrap}
+  .field.periodNames > label{ margin-bottom:8px; display:block; }
+  #skipRows .skipRow{ display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin:6px 0; }
+
+  .inlineSearch{display:flex; gap:8px; align-items:center; padding:8px 12px; background:#fbfbfb; border-bottom:1px solid #efefef}
+  .inlineSearch input{width:260px}
+  .scopeTag{font-size:12px;color:#6b7280}
+
+  /* Gist section */
+  .gistWrap{margin-top:16px; border:1px dashed var(--border); border-radius:12px; padding:12px; background:#fafafa}
+  .gistRow{display:grid; grid-template-columns:140px auto auto; gap:8px; align-items:center; margin:6px 0;}
+  .gistRow label{text-align:center; font-size:13px;}
+  .gistBadge{display:inline-flex; align-items:center; gap:6px; padding:4px 10px; border:1px solid #cbd5e1; border-radius:999px; background:#f1f5f9; font-size:12px}
+  #gistToken{ width:220px; }
+  #gistId{ width:260px; }
+
+/* Make "Connect Gist" button fit its content width */
+#gistSave{
+  justify-self: start;     /* prevent grid stretch */
+  width: fit-content;      /* size to its label */
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1 class="title-underline">Click Links to Access Weekly Agendas</h1>
+
+    <!-- Right-side actions: Settings + Edit, pill below -->
+    <div class="actions">
+      <div class="topRow">
+        <button id="openSettings" class="iconBtn" title="Customize master template">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+            <path d="M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z"/>
+            <path d="M19 12a7 7 0 0 0-.08-.98l2.02-1.57-2-3.46-2.4.7a7 7 0 0 0-1.7-.99L14.5 3h-5l-.34 2.7a7 7 0 0 0-1.7.99l-2.4-.7-2 3.46 2.02 1.57A7 7 0 0 0 5 12c0 .33.03 .65.08 .98l-2.02 1.57 2 3.46 2.4-.7c.52 .41 1.1 .75 1.7 .99l.34 2.7h5l.34-2.7c.6-.24 1.18-.58 1.7-.99l2.4 .7 2-3.46-2.02-1.57c.05-.33 .08-.65 .08-.98Z"/>
+          </svg>
+          Settings
+        </button>
+
+        <button id="toggleEdit" class="iconBtn" title="Toggle editing (double-click linking & inline edits)">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+            <path d="M12 20h9"/>
+            <path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L8 18l-4 1 1-4 11.5-11.5Z"/>
+          </svg>
+          Edit
+        </button>
+      </div>
+
+      <span id="editStatePill" class="pill disabled">Editing disabled</span>
+    </div>
+  </header>
+
+  <div class="toolbar">
+    <button id="authBtn" class="btn" disabled>Loading Google…</button>
+    <button id="signoutBtn" class="btn secondary" disabled>Sign out</button>
+    <span id="authState" class="pill">Drive: <strong>signed out</strong></span>
+    <span id="authError" class="pill err" style="display:none"></span>
+  </div>
+
+  <div id="currentWeekBlock"></div>
+  <div class="sectionRule"></div>
+  <div id="allWeeks"></div>
+
+  <div id="emptyState" class="empty" style="display:none;">
+    Configure in <strong>Settings</strong> to generate weekly agendas.
+  </div>
+</div>
+
+<!-- Settings Modal -->
+<div id="settingsModal" class="modalBackdrop" role="dialog" aria-modal="true" aria-labelledby="settingsTitle">
+  <div class="modal">
+    <header>
+      <h2 id="settingsTitle">Weekly Agenda Settings</h2>
+      <button id="closeSettings" class="iconBtn" title="Close">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M18 6 6 18M6 6l12 12"/>
+        </svg>
+      </button>
+    </header>
+    <div class="body">
+      <div class="topCols">
+        <div class="fieldsForm">
+          <div class="fRow">
+            <label for="semesterSel">Semester</label>
+            <select id="semesterSel">
+              <option value="">— Select —</option>
+              <option value="Fall">Fall</option>
+              <option value="Spring">Spring</option>
+            </select>
+          </div>
+          <div class="fRow">
+            <label for="yearInput">Year</label>
+            <input id="yearInput" type="number" min="2000" max="2100" step="1" />
+          </div>
+        </div>
+
+        <div class="fieldsForm compact">
+          <div class="fRow">
+            <label for="firstMonday">First week</label>
+            <input id="firstMonday" type="date" />
+          </div>
+          <div class="fRow">
+            <label for="lastFriday">Last week</label>
+            <input id="lastFriday" type="date" />
+          </div>
+        </div>
+      </div>
+
+      <div class="field" style="margin-top:6px;">
+        <label>Weeks to skip (not counted)</label>
+        <div id="skipRows"></div>
+        <div class="row" style="margin-top:8px;">
+          <button id="addSkip" class="btn secondary" type="button">+ Add skip week</button>
+        </div>
+      </div>
+
+      <div class="field periodNames" style="margin-top:16px;">
+        <label>Label each period (leave blank for conference)</label>
+        <div class="twoCols" id="periodInputs"></div>
+      </div>
+
+      <div class="field" style="margin-top:16px;">
+        <div id="folderToggle" class="collapsibleHead" role="button" tabindex="0" aria-expanded="false" aria-controls="folderChooserWrap">
+          <span class="chev">▶</span>
+          <span>Restrict each period to a Google Drive folder (optional)</span>
+        </div>
+        <div id="folderChooserWrap" style="display:none;">
+          <div id="folderChooserArea" style="margin-top:10px;"></div>
+        </div>
+      </div>
+
+      <!-- Gist connect section (always visible) -->
+      <div id="gistBlock" class="gistWrap">
+        <div class="gistRow">
+          <label for="gistToken">GitHub Token</label>
+          <input id="gistToken" type="text" />
+          <button id="gistSave" class="btn" type="button">Connect Gist</button>
+        </div>
+        <div class="gistRow">
+          <label for="gistId">Gist ID (optional)</label>
+          <input id="gistId" type="text" />
+          <div></div>
+        </div>
+        <div class="gistRow" id="gistStatusRow" style="display:none;">
+          <label>Status</label>
+          <div class="gistBadge" id="gistStatus">…</div>
+          <div></div>
+        </div>
+      </div>
+    </div>
+
+    <footer>
+      <div class="row">
+        <button id="resetDefaults" class="btn secondary">Reset to Default</button>
+      </div>
+      <div class="row">
+        <button id="saveSettings" class="btn" style="border-color:#10b981;background:#ecfdf5;color:#065f46">Save &amp; Generate</button>
+      </div>
+    </footer>
+  </div>
+</div>
+
+<!-- Google APIs -->
+<script src="https://apis.google.com/js/api.js" async defer></script>
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+
+<script>
+/* ===== Editing mode ===== */
+let editingEnabled = false;
+function updateEditingUI(){
+  const pill = document.getElementById("editStatePill");
+  if (!pill) return;
+  if (editingEnabled){
+    pill.textContent = "Editing enabled";
+    pill.classList.add("enabled");
+    pill.classList.remove("disabled");
+  } else {
+    pill.textContent = "Editing disabled";
+    pill.classList.add("disabled");
+    pill.classList.remove("enabled");
+  }
+}
+function isEditing(){ return !!editingEnabled; }
+function attachEditToggle(){
+  const btn = document.getElementById("toggleEdit");
+  if (!btn) return;
+  btn.addEventListener("click", ()=>{ editingEnabled = !editingEnabled; updateEditingUI(); });
+  updateEditingUI();
+}
+
+/* ===== Google config ===== */
+const GOOGLE = {
+  API_KEY: "AIzaSyDWnOao76tK1ecBGfL21ZLxBDvChqlGrx0",
+  CLIENT_ID: "462034083093-75pc8bgfieivcrkc6275vgahg44qhvvh.apps.googleusercontent.com",
+  DISCOVERY_DOCS: [
+    "https://www.googleapis.com/discovery/v1/apis/drive/v3/rest",
+    "https://slides.googleapis.com/$discovery/rest?version=v1"
+  ],
+  SCOPES:
+    "https://www.googleapis.com/auth/drive.readonly " +
+    "https://www.googleapis.com/auth/presentations.readonly " +
+    "https://www.googleapis.com/auth/drive.appdata",
+  authed: false,
+};
+
+/* ===== LocalStorage keys ===== */
+const LS_KEY_LINKS   = "agenda_links_by_semester";
+const LS_KEY_CFG     = "agenda_master_template_neutral_v1";
+const LS_KEY_GH      = "agenda_github_sync_v1"; // {token, gistId}
+const LS_KEY_AUTH    = "agenda_auth_meta_v1";
+
+/* ===== Neutral defaults ===== */
+const NEUTRAL_CFG = {
+  semester:"", year:"",
+  periods:["","","","","",""],
+  periodFolders:["","","","","",""],
+  periodFolderNames:["","","","","",""],
+  firstMonday:"", lastFriday:"",
+  skipWeeks:[],
+  labelsFinalized:false
+};
+
+function saveAuthMeta(m){ localStorage.setItem(LS_KEY_AUTH, JSON.stringify(m||{})); }
+function loadAuthMeta(){ try { return JSON.parse(localStorage.getItem(LS_KEY_AUTH)||"{}"); } catch { return {}; } }
+
+/* ===== Utility dates ===== */
+const dayMs = 24*60*60*1000;
+function toDateAtMidnight(s){ if(!s) return null; const [y,m,d]=s.split("-").map(Number); return new Date(y,m-1,d,0,0,0,0); }
+function addDays(date,n){ const d=new Date(date); d.setDate(d.getDate()+n); return d; }
+function overlaps(aStart,aEnd,bStart,bEnd){ return !(aEnd < bStart || aStart > bEnd); }
+function mondayOf(d){ const nd=new Date(d); const w=(nd.getDay()+6)%7; nd.setDate(nd.getDate()-w); nd.setHours(0,0,0,0); return nd; }
+function fmtMonthLong(d){ return d.toLocaleDateString(undefined,{month:"long"}); }
+function fmtDay(d){ return d.getDate(); }
+function formatRangeFull(a,b){
+  if(a.getMonth()===b.getMonth() && a.getFullYear()===b.getFullYear()){
+    return `${fmtMonthLong(a)} ${fmtDay(a)}–${fmtDay(b)}`;
+  } else {
+    return `${fmtMonthLong(a)} ${fmtDay(a)}–${fmtMonthLong(b)} ${fmtDay(b)}`;
+  }
+}
+
+/* ===== Config & links persistence ===== */
+function loadCfg(){ const raw = localStorage.getItem(LS_KEY_CFG); if(!raw) return {...NEUTRAL_CFG};
+  try{ const cfg = JSON.parse(raw);
+    cfg.semester ??=""; cfg.year ??="";
+    if(!Array.isArray(cfg.periods)||cfg.periods.length!==6) cfg.periods=["","","","","",""];
+    if(!Array.isArray(cfg.periodFolders)||cfg.periodFolders.length!==6) cfg.periodFolders=["","","","","",""];
+    if(!Array.isArray(cfg.periodFolderNames)||cfg.periodFolderNames.length!==6) cfg.periodFolderNames=["","","","","",""];
+    cfg.firstMonday ??=""; cfg.lastFriday ??="";
+    if(!Array.isArray(cfg.skipWeeks)) cfg.skipWeeks=[];
+    cfg.labelsFinalized = !!cfg.labelsFinalized; return cfg;
+  }catch{ return {...NEUTRAL_CFG}; }
+}
+function saveCfg(cfg){ localStorage.setItem(LS_KEY_CFG, JSON.stringify(cfg)); }
+function keyForLinks(cfg){ return `${cfg.semester || "Semester"}-${cfg.year || "Year"}`; }
+function loadLinksFor(cfg){ try{ const all = JSON.parse(localStorage.getItem(LS_KEY_LINKS) || "{}"); return all[keyForLinks(cfg)] || {}; }catch{ return {}; } }
+function saveLinksFor(cfg, linksObj){
+  let all = {}; try{ all = JSON.parse(localStorage.getItem(LS_KEY_LINKS) || "{}"); }catch{}
+  all[keyForLinks(cfg)] = linksObj;
+  localStorage.setItem(LS_KEY_LINKS, JSON.stringify(all));
+}
+
+/* ===== Google auth loader ===== */
+let tokenClient = null; let gapiReady = false; let gisReady = false; let refreshTimer = null;
+
+function setAuthUiState({enabled, text, error}){
+  const authBtn = document.getElementById("authBtn");
+  const errEl = document.getElementById("authError");
+  if (typeof enabled === "boolean") authBtn.disabled = !enabled;
+  if (text) authBtn.textContent = text;
+  if (error){ errEl.style.display="inline-block"; errEl.textContent = error; } else { errEl.style.display="none"; errEl.textContent=""; }
+}
+async function loadGapiClient(){
+  if (gapiReady) return;
+  await new Promise((resolve,reject)=>{
+    let waited = 0;
+    const tick = () => {
+      if (window.gapi && window.gapi.load) {
+        window.gapi.load('client', async ()=>{
+          try{
+            await window.gapi.client.init({ apiKey: GOOGLE.API_KEY, discoveryDocs: GOOGLE.DISCOVERY_DOCS });
+            gapiReady = true; resolve();
+          }catch(e){ reject(e); }
+        });
+      } else {
+        waited += 50;
+        if (waited > 10000) return reject(new Error("Google API client failed to load"));
+        setTimeout(tick,50);
+      }
+    };
+    tick();
+  });
+}
+async function loadGis(){
+  if (gisReady) return;
+  await new Promise((resolve,reject)=>{
+    let waited = 0;
+    const tick = () => {
+      if (window.google && window.google.accounts && window.google.accounts.oauth2) {
+        gisReady = true; resolve();
+      } else {
+        waited += 50;
+        if (waited > 10000) return reject(new Error("Google Identity Services failed to load"));
+        setTimeout(tick,50);
+      }
+    };
+    tick();
+  });
+}
+async function initAuth(){
+  await loadGapiClient();
+  await loadGis();
+  if (tokenClient) return tokenClient;
+  tokenClient = google.accounts.oauth2.initTokenClient({
+    client_id: GOOGLE.CLIENT_ID,
+    scope: GOOGLE.SCOPES,
+    callback: async (resp) => {
+      if (resp && resp.error) { setAuthUiState({error: resp.error_description || resp.error}); return; }
+      if (!resp || !resp.access_token) return;
+
+      gapi.client.setToken({ access_token: resp.access_token });
+      GOOGLE.authed = true;
+      try {
+        const about = await gapi.client.drive.about.get({ fields: "user(emailAddress)" });
+        const emailHint = about?.result?.user?.emailAddress || "";
+        const prev = loadAuthMeta();
+        saveAuthMeta({ email: emailHint || prev.email || "", granted: true });
+      } catch(e){
+        const prev = loadAuthMeta();
+        saveAuthMeta({ email: prev.email || "", granted: true });
+      }
+      updateAuthUi();
+    }
+  });
+  return tokenClient;
+}
+async function trySilentSignIn(){
+  try{
+    await initAuth();
+    const meta = loadAuthMeta();
+    tokenClient.requestAccessToken({ prompt:"", login_hint: meta.email || undefined });
+    return await new Promise(resolve=>{
+      const start=Date.now();
+      const check=()=>{ const tok=gapi.client.getToken?.(); if(tok && tok.access_token) return resolve(true);
+        if(Date.now()-start>1500) return resolve(false); setTimeout(check,50); };
+      check();
+    });
+  }catch(e){ console.warn("Silent sign-in failed:", e); return false; }
+}
+async function ensureSignedIn(){
+  try{
+    await initAuth();
+    const existing = gapi.client.getToken?.();
+    if (existing && existing.access_token){
+      GOOGLE.authed = true; updateAuthUi(); return true;
+    }
+    const meta = loadAuthMeta();
+    tokenClient.requestAccessToken({ prompt: "consent", login_hint: meta.email || undefined });
+    return true;
+  }catch(e){
+    const msg = String(e && (e.error_description || e.message || e)).toLowerCase();
+    if (msg.includes("origin") || msg.includes("authorized javascript origins")){
+      setAuthUiState({error:"Origin not allowed — add this site to Authorized JavaScript origins in Google Cloud."});
+    } else {
+      setAuthUiState({error:"Sign-in failed. " + (e.error_description || e.message || e)});
+    }
+    return false;
+  }
+}
+async function signOut(){
+  try{
+    const tok = gapi.client.getToken?.();
+    if (tok && tok.access_token) {
+      try{ google.accounts.oauth2.revoke(tok.access_token); }catch(e){}
+    }
+  } finally {
+    gapi.client.setToken(null); GOOGLE.authed=false;
+    const meta=loadAuthMeta(); saveAuthMeta({ email: meta.email || "", granted:false }); updateAuthUi();
+  }
+}
+function scheduleSilentRefresh(){
+  if (refreshTimer) clearInterval(refreshTimer);
+  refreshTimer = setInterval(async ()=>{
+    const meta = loadAuthMeta(); if(!meta.granted) return;
+    const ok = await trySilentSignIn(); if(ok){ GOOGLE.authed=true; updateAuthUi(); }
+  }, 45*60*1000);
+}
+function updateAuthUi(){
+  const meta = loadAuthMeta();
+  const email = (meta && meta.email) ? meta.email : "";
+  const authBtn = document.getElementById("authBtn");
+  authBtn.textContent = (GOOGLE.authed && email) ? email : (gisReady && gapiReady ? "Connect Google Drive" : "Loading Google…");
+  document.getElementById("authState").innerHTML = "Drive: <strong>"+(GOOGLE.authed?"signed in":"signed out")+"</strong>";
+  document.getElementById("signoutBtn").disabled = !GOOGLE.authed;
+  setAuthUiState({enabled: gisReady && gapiReady, text: authBtn.textContent});
+}
+
+/* ===== Drive/Slides helpers ===== */
+async function searchSlides(hint, folderId){
+  await ensureSignedIn();
+  const clauses = [
+    "mimeType='application/vnd.google-apps.presentation'",
+    "trashed=false",
+    hint ? `name contains '${hint.replace(/'/g,"\\'")}'` : null,
+    folderId ? `'${folderId}' in parents` : null
+  ].filter(Boolean);
+  const q = clauses.join(" and ");
+  const res = await gapi.client.drive.files.list({
+    q, pageSize: 20, orderBy: "modifiedTime desc",
+    fields: "files(id,name,modifiedTime,webViewLink)"
+  });
+  return res.result.files || [];
+}
+async function searchFolders(term){
+  await ensureSignedIn();
+  const q = ["mimeType='application/vnd.google-apps.folder'","trashed=false", term?`name contains '${term.replace(/'/g,"\\'")}'`:null].filter(Boolean).join(" and ");
+  const res = await gapi.client.drive.files.list({ q, pageSize: 10, fields: "files(id,name)" });
+  return res.result.files || [];
+}
+function slideLink(fileId, pageObjectId){ return `https://docs.google.com/presentation/d/${fileId}/edit#slide=id.${pageObjectId}`; }
+function titleFromSlide(slide, index){
+  const elems = slide.pageElements || [];
+  for(const el of elems){
+    const shape = el.shape; if(!shape) continue;
+    const ph = shape.placeholder;
+    if(ph && ph.type==="TITLE" && shape.text && shape.text.textElements){
+      let s=""; for(const te of shape.text.textElements){ if(te.textRun && te.textRun.content) s+=te.textRun.content; }
+      s=(s||"").trim(); if(s) return s;
+    }
+  }
+  return `Slide ${index+1}`;
+}
+async function getSlideThumb(presentationId, pageObjectId){
+  try{
+    const r=await gapi.client.slides.presentations.pages.getThumbnail({
+      presentationId, pageObjectId,
+      "thumbnailProperties.mimeType":"PNG","thumbnailProperties.thumbnailSize":"MEDIUM"
+    });
+    return r.result.contentUrl;
+  }catch(e){
+    try{
+      const r2=await gapi.client.slides.presentations.pages.getThumbnail({
+        presentationId, pageObjectId,
+        "thumbnailProperties.mimeType":"PNG","thumbnailProperties.thumbnailSize":"SMALL"
+      });
+      return r2.result.contentUrl;
+    }catch{ return ""; }
+  }
+}
+async function fetchFolderNameById(id){
+  if(!id) return "";
+  try{
+    await ensureSignedIn();
+    const r = await gapi.client.drive.files.get({ fileId:id, fields:"id,name" });
+    return r?.result?.name || "";
+  }catch{ return ""; }
+}
+
+/* ===== Cloud Sync (Drive AppData) ===== */
+const SYNC_FILE_NAME = "weekly-agenda-sync.json";
+function buildSyncPayload(){
+  const cfg = loadCfg();
+  let allLinks = {};
+  try { allLinks = JSON.parse(localStorage.getItem(LS_KEY_LINKS) || "{}"); } catch {}
+  return { cfg, linksBySemester: allLinks, updatedAt: new Date().toISOString() };
+}
+function applyCloudPayload(payload){
+  if (!payload || typeof payload !== "object") return;
+  if (payload.cfg) saveCfg(payload.cfg);
+  if (payload.linksBySemester) localStorage.setItem(LS_KEY_LINKS, JSON.stringify(payload.linksBySemester));
+}
+async function getOrCreateAppDataFileId(createIfMissing=false){
+  await ensureSignedIn();
+  const list = await gapi.client.drive.files.list({
+    spaces: "appDataFolder",
+    q: `name='${SYNC_FILE_NAME}' and trashed=false`,
+    fields: "files(id,name)"
+  });
+  const found = (list.result.files || [])[0];
+  if (found) return found.id;
+  if (!createIfMissing) return null;
+
+  const metadata = { name: SYNC_FILE_NAME, parents: ["appDataFolder"], mimeType: "application/json" };
+  const media = JSON.stringify({ createdAt: new Date().toISOString() });
+  const body = buildMultipartBody(metadata, media, "application/json");
+  const res = await gapi.client.request({
+    path: "/upload/drive/v3/files",
+    method: "POST",
+    params: { uploadType: "multipart" },
+    headers: { "Content-Type": `multipart/related; boundary=${body.boundary}` },
+    body: body.body
+  });
+  return res.result.id;
+}
+async function readSyncFromDrive(){
+  try{
+    const fileId = await getOrCreateAppDataFileId(false);
+    if (!fileId) return null;
+    const meta = await gapi.client.drive.files.get({ fileId, alt: "media" });
+    return meta.result || null;
+  }catch(e){ console.warn("readSyncFromDrive error:", e); return null; }
+}
+async function writeSyncToDrive(payload){
+  try{
+    const fileId = await getOrCreateAppDataFileId(true);
+    const metadata = { mimeType: "application/json" };
+    const media = JSON.stringify(payload);
+    const body = buildMultipartBody(metadata, media, "application/json");
+    const res = await gapi.client.request({
+      path: "/upload/drive/v3/files/" + fileId,
+      method: "PATCH",
+      params: { uploadType: "multipart" },
+      headers: { "Content-Type": `multipart/related; boundary=${body.boundary}` },
+      body: body.body
+    });
+    return !!res.result;
+  }catch(e){ console.warn("writeSyncToDrive error:", e); return false; }
+}
+function buildMultipartBody(metadataObj, mediaText, mediaType){
+  const boundary = "-------314159265358979323846";
+  const delimiter = "\r\n--" + boundary + "\r\n";
+  const closeDelim = "\r\n--" + boundary + "--";
+  const body =
+    delimiter +
+    "Content-Type: application/json; charset=UTF-8\r\n\r\n" +
+    JSON.stringify(metadataObj) + "\r\n" +
+    delimiter +
+    "Content-Type: " + (mediaType || "text/plain") + "\r\n\r\n" +
+    mediaText +
+    closeDelim;
+  return { boundary, body };
+}
+
+/* ===== Optional GitHub Gist backup ===== */
+function loadGh(){ try{ return JSON.parse(localStorage.getItem(LS_KEY_GH)||"{}"); }catch{ return {}; } }
+function saveGh(obj){ localStorage.setItem(LS_KEY_GH, JSON.stringify(obj||{})); }
+async function gistRequest(method, path, body, token){
+  const res=await fetch(`https://api.github.com${path}`,{
+    method,
+    headers:{
+      "Accept":"application/vnd.github+json",
+      "Authorization":`Bearer ${token}`,
+      "Content-Type":"application/json"
+    },
+    body: body?JSON.stringify(body):undefined
+  });
+  if(!res.ok) throw new Error(`${res.status} ${res.statusText}`);
+  try{ return await res.json(); }catch{ return null; }
+}
+async function ensureGist(token, gistId){
+  if (gistId) return gistId;
+  const files = {
+    "agenda-config.json": { content: JSON.stringify(loadCfg(), null, 2) },
+    "agenda-links.json":  { content: JSON.stringify(JSON.parse(localStorage.getItem(LS_KEY_LINKS)||"{}"), null, 2) }
+  };
+  const r = await gistRequest("POST", "/gists", { description:"Weekly Agenda Sync", public:false, files }, token);
+  return r?.id || null;
+}
+async function gistWriteAll(){
+  const gh = loadGh(); if(!gh.token) return false;
+  try{
+    gh.gistId = await ensureGist(gh.token, gh.gistId || null);
+    saveGh(gh);
+    const files = {
+      "agenda-config.json": { content: JSON.stringify(loadCfg(), null, 2) },
+      "agenda-links.json":  { content: JSON.stringify(JSON.parse(localStorage.getItem(LS_KEY_LINKS)||"{}"), null, 2) }
+    };
+    await gistRequest("PATCH", `/gists/${gh.gistId}`, { files }, gh.token);
+    return true;
+  }catch(e){ console.warn("Gist write failed:", e.message||e); return false; }
+}
+async function gistReadAll(){
+  const gh = loadGh(); if(!gh.token || !gh.gistId) return null;
+  try{
+    const r = await gistRequest("GET", `/gists/${gh.gistId}`, null, gh.token);
+    const files = r?.files || {};
+    const cfgText = files["agenda-config.json"]?.content;
+    const linksText = files["agenda-links.json"]?.content;
+    const payload = {};
+    if (cfgText){ payload.cfg = JSON.parse(cfgText); }
+    if (linksText){ payload.linksBySemester = JSON.parse(linksText); }
+    return payload;
+  }catch(e){ console.warn("Gist read failed:", e.message||e); return null; }
+}
+
+/* ===== Weeks build & render ===== */
+function buildWeeks(cfg){
+  const startRaw = toDateAtMidnight(cfg.firstMonday);
+  const endRaw   = toDateAtMidnight(cfg.lastFriday);
+  if(!startRaw || !endRaw || startRaw > endRaw) return [];
+  const startMon = mondayOf(startRaw);
+  const endFri   = addDays(mondayOf(endRaw), 4);
+  const skipRanges = (cfg.skipWeeks||[]).map(({from,to})=>{
+    const sRaw=toDateAtMidnight(from); const eRaw=toDateAtMidnight(to); if(!sRaw||!eRaw) return null;
+    const s=mondayOf(sRaw); const e=addDays(mondayOf(eRaw),4); return {from:s,to:e};
+  }).filter(Boolean);
+
+  const weeks=[]; let weekNum=0;
+  for(let mon=new Date(startMon); mon<=endFri; mon=addDays(mon,7)){
+    const fri=addDays(mon,4);
+    const isSkipped = skipRanges.some(r => overlaps(mon, fri, r.from, r.to));
+    if(isSkipped) continue;
+    weekNum++; weeks.push({ n:weekNum, monday:new Date(mon), friday:new Date(fri) });
+  }
+  return weeks;
+}
+function chooseDisplayWeek(weeks, now=new Date()){
+  if(!weeks.length) return { week:null, idx:-1 };
+  const mon=mondayOf(now);
+  let idx=weeks.findIndex(w=>+w.monday===+mon);
+  if(idx!==-1){
+    const friMidnight=new Date(weeks[idx].friday); friMidnight.setHours(0,0,0,0);
+    const satMidnight=new Date(friMidnight.getTime()+dayMs);
+    if(now>=satMidnight) idx=Math.min(idx+1, weeks.length-1);
+  }else{ idx=(now<weeks[0].monday)?0:(weeks.length-1); }
+  return { week:weeks[idx], idx };
+}
+function weekActualLabel(w){ return formatRangeFull(w.monday, w.friday); }
+function headerActualLabel(cfg){ return `${cfg.semester || "Semester"} ${cfg.year || "Year"}`; }
+
+function renderWeekTable(cfg, w, links){
+  const table=document.createElement("table"); table.className="grid";
+  const thead=document.createElement("thead"); const trh=document.createElement("tr");
+
+  const t0=document.createElement("th"); t0.textContent=headerActualLabel(cfg); trh.appendChild(t0);
+  const PERIOD_TIMES=[
+    { title:"8:30-9:26",  sub:"8:30-9:12" },
+    { title:"9:33-10:29", sub:"9:19-10:01" },
+    { title:"10:46-11:42",sub:"10:55-11:37" },
+    { title:"11:49-12:57",sub:"11:44-12:26" },
+    { title:"1:34-2:30",  sub:"1:03-1:45" },
+    { title:"2:37-3:33",  sub:"1:52-2:34" },
+  ];
+  PERIOD_TIMES.forEach(p=>{ const th=document.createElement("th"); th.innerHTML=`<div class="time">${p.title}</div><div class="sub">${p.sub}</div>`; trh.appendChild(th); });
+  const thNotes=document.createElement("th"); thNotes.textContent="Notes:"; thNotes.className="colNotes"; trh.appendChild(thNotes);
+  thead.appendChild(trh); table.appendChild(thead);
+
+  const tbody=document.createElement("tbody"); const tr=document.createElement("tr");
+  const label=document.createElement("td"); label.innerHTML=`<div class="wkLabel">Week ${w.n}</div>`; tr.appendChild(label);
+
+  const linksForWeek=links?.[w.n] || {};
+
+  (cfg.periods||[]).forEach((periodLabel,idx)=>{
+    const td=document.createElement("td");
+    if(!periodLabel){ td.innerHTML=`<div class="muted">Conference</div>`; tr.appendChild(td); return; }
+
+    const saved = linksForWeek[idx];
+    const subjectWrap = document.createElement("div");
+    subjectWrap.className = "subjectLink";
+    subjectWrap.dataset.clickable = "true";
+
+    if(saved){
+      const href = saved.slideId ? slideLink(saved.id, saved.slideId) : (saved.url || "#");
+      subjectWrap.innerHTML = `<a class="link" href="${href}" target="_blank" rel="noopener">${periodLabel}</a>`;
+      (() => { try { const _a = subjectWrap.querySelector("a"); if(_a){ _a.addEventListener("dblclick", (e)=>{ if(!isEditing()) return; e.preventDefault(); e.stopPropagation(); try { openResults(); } catch(_){} }); } } catch(_){} })();
+    } else {
+      subjectWrap.innerHTML = `<span class="muted">${periodLabel}</span><div class="dblHint">double-click to link</div>`;
+    }
+
+    const results = document.createElement("div");
+    results.className = "results";
+    results.style.display = "none";
+
+    let escHandler = null, clickAwayHandler = null;
+    function closeResults(){
+      results.style.display = "none";
+      results.innerHTML = "";
+      document.removeEventListener("keydown", escHandler, true);
+      document.removeEventListener("click", clickAwayHandler, true);
+      escHandler = clickAwayHandler = null;
+    }
+    function openResults(){
+      results.style.display = "block";
+      results.addEventListener("click", (e)=> e.stopPropagation(), { once:false });
+
+      escHandler = (e)=>{ if(e.key === "Escape"){ e.preventDefault(); closeResults(); } };
+      clickAwayHandler = (e)=>{
+        if(!results.contains(e.target) && !subjectWrap.contains(e.target)){
+          closeResults();
+        }
+      };
+      document.addEventListener("keydown", escHandler, true);
+      document.addEventListener("click", clickAwayHandler, true);
+    }
+
+    function renderFileRows(files){
+      results.querySelectorAll(".resultItem.fileRow, .slidesList").forEach(n=>n.remove());
+      if(!files.length){
+        const none = document.createElement("div");
+        none.className = "resultItem fileRow";
+        none.innerHTML = `<em>No matches found.</em>`;
+        results.appendChild(none);
+        return;
+      }
+      const frag = document.createDocumentFragment();
+      files.forEach(f=>{
+        const row=document.createElement("div"); row.className="resultItem fileRow";
+        const left=document.createElement("div");
+        left.innerHTML = `<div><strong>${f.name}</strong></div><small>Last modified ${new Date(f.modifiedTime).toLocaleDateString()}</small>`;
+        const pick=document.createElement("button"); pick.className="btn"; pick.textContent="Select";
+        row.appendChild(left); row.appendChild(pick);
+        pick.addEventListener("click", async (evt)=>{
+          evt.stopPropagation();
+          pick.disabled=true; pick.textContent="Loading slides…";
+          try{
+            const pres = await gapi.client.slides.presentations.get({ presentationId: f.id });
+            const slides = pres.result.slides || [];
+            const nested = document.createElement("div"); nested.className="slidesList";
+            if(!slides.length){ nested.innerHTML = `<div class="slideRow"><span class="slideTitle">No slides found</span></div>`; }
+            else{
+              slides.forEach((s,i)=>{
+                const sr=document.createElement("div"); sr.className="slideRow";
+                const img=document.createElement("img"); img.className="thumb skel"; img.alt="Slide thumbnail"; img.loading="lazy";
+                const meta=document.createElement("div"); const human=titleFromSlide(s,i);
+                meta.innerHTML=`<div class="slideTitle">${human}</div><div class="slideMeta">#${i+1}</div>`;
+                const chooseBtn=document.createElement("button"); chooseBtn.className="choose"; chooseBtn.textContent="Choose";
+                chooseBtn.addEventListener("click", async (ev)=>{
+                  ev.stopPropagation();
+                  const all=loadLinksFor(cfg); all[w.n]??={};
+                  all[w.n][idx] = { id:f.id, name:f.name, slideId:s.objectId, url:f.webViewLink };
+                  saveLinksFor(cfg, all);
+
+                  if (GOOGLE.authed) { writeSyncToDrive(buildSyncPayload()).catch(()=>{}); }
+                  gistWriteAll().catch(()=>{});
+
+                  subjectWrap.innerHTML = `<a class="link" href="${slideLink(f.id, s.objectId)}" target="_blank" rel="noopener">${periodLabel}</a>`;
+                  (() => { try { const _a = subjectWrap.querySelector("a"); if(_a){ _a.addEventListener("dblclick", (e)=>{ if(!isEditing()) return; e.preventDefault(); e.stopPropagation(); try { openResults(); } catch(_){} }); } } catch(_){} })();
+                  closeResults();
+                });
+                sr.appendChild(img); sr.appendChild(meta); sr.appendChild(chooseBtn); nested.appendChild(sr);
+                (async ()=>{ const url=await getSlideThumb(f.id, s.objectId); if(url){ img.src=url; img.classList.remove("skel"); } })();
+              });
+            }
+            row.insertAdjacentElement("afterend", nested);
+            pick.textContent="Slides loaded";
+            setTimeout(()=>{ pick.textContent="Select"; pick.disabled=false; }, 800);
+          }catch(e){
+            pick.textContent="Select"; pick.disabled=false;
+            alert("Failed to load slides: " + (e.result?.error?.message || e.message || e));
+          }
+        });
+        frag.appendChild(row);
+      });
+      results.appendChild(frag);
+    }
+
+    subjectWrap.addEventListener("dblclick", async (e)=>{
+      if (!isEditing()) return;
+      e.stopPropagation();
+      try{
+        await ensureSignedIn();
+        openResults();
+        results.innerHTML = "";
+
+        const folderId = (loadCfg().periodFolders || [])[idx] || "";
+        const scopeText = folderId ? "Searching in selected folder" : "Searching all Drive";
+        const bar = document.createElement("div"); bar.className="inlineSearch";
+        const qInput = document.createElement("input");
+        qInput.type = "search";
+        qInput.placeholder = folderId ? "Search this folder…" : "Type to search Drive…"; // no prefill
+        const scope = document.createElement("span"); scope.className="scopeTag"; scope.textContent = scopeText;
+        const btnGo = document.createElement("button"); btnGo.className="btn"; btnGo.textContent = "Search";
+        bar.appendChild(qInput); bar.appendChild(btnGo); bar.appendChild(scope);
+        results.appendChild(bar);
+
+        async function runSearch(){
+          const term = qInput.value.trim();        // no default text
+          const files = await searchSlides(term || "", folderId || "");
+          renderFileRows(files);
+        }
+        btnGo.addEventListener("click", (ev)=>{ ev.stopPropagation(); runSearch(); });
+        qInput.addEventListener("keydown", (ev)=>{ if(ev.key==="Enter"){ ev.preventDefault(); ev.stopPropagation(); runSearch(); } });
+
+        if (folderId){
+          runSearch(); // auto-list recent in folder
+        }
+        setTimeout(()=> qInput.focus(), 0);
+
+      }catch(err){
+        openResults();
+        const code = (err && (err.error || err.code)) || "";
+        const msg = (err && (err.error_description || err.message)) || String(err);
+        results.innerHTML = `<div class="resultItem"><em>Error: ${code ? code + " — " : ""}${msg}</em></div>`;
+      }
+    });
+
+    td.appendChild(subjectWrap);
+    td.appendChild(results);
+    tr.appendChild(td);
+  });
+
+  const tNotes=document.createElement("td");
+  const savedNotes=typeof linksForWeek.notes==="string" ? linksForWeek.notes : "*Agendas\n*Lessons\n*Grades\n*e-Calendar\n*Announcements\n*Services";
+  const notesDiv=document.createElement("div"); notesDiv.className="note"; notesDiv.textContent=savedNotes;
+  notesDiv.addEventListener("dblclick", ()=>{
+    if (!isEditing()) return;
+    if(notesDiv.isContentEditable) return;
+    notesDiv.contentEditable="true"; notesDiv.classList.add("isEditing");
+    const r=document.createRange(); r.selectNodeContents(notesDiv); r.collapse(false);
+    const sel=window.getSelection(); sel.removeAllRanges(); sel.addRange(r); notesDiv.focus();
+  });
+  notesDiv.addEventListener("keydown",(e)=>{
+    if(e.key==="Enter" && !e.shiftKey){ e.preventDefault(); finalizeNotes(); }
+    else if(e.key==="Escape"){ e.preventDefault(); notesDiv.textContent=savedNotes; exitEdit(); }
+  });
+  async function finalizeNotes(){
+    const txt=notesDiv.textContent||"";
+    const all=loadLinksFor(cfg); all[w.n]=all[w.n]||{}; all[w.n].notes=txt; saveLinksFor(cfg, all);
+    if (GOOGLE.authed) { writeSyncToDrive(buildSyncPayload()).catch(()=>{}); }
+    gistWriteAll().catch(()=>{});
+    exitEdit();
+  }
+  function exitEdit(){ notesDiv.contentEditable="false"; notesDiv.classList.remove("isEditing"); }
+  tNotes.appendChild(notesDiv); tr.appendChild(tNotes);
+
+  tbody.appendChild(tr); table.appendChild(tbody);
+  return table;
+}
+
+function renderAll(){
+  const cfg=loadCfg(); const links=loadLinksFor(cfg);
+  const hasConfig=!!cfg.semester && !!cfg.year && !!cfg.firstMonday && !!cfg.lastFriday;
+
+  const top=document.getElementById("currentWeekBlock");
+  const list=document.getElementById("allWeeks");
+  const empty=document.getElementById("emptyState");
+  top.innerHTML=""; list.innerHTML="";
+
+  if(!hasConfig){ empty.style.display="block"; return; } else { empty.style.display="none"; }
+
+  const weeks=buildWeeks(cfg);
+  if(!weeks.length){ empty.style.display="block"; empty.textContent="No valid weeks found. Check First week, Last week, and any skipped weeks."; return; }
+
+  const now=new Date(); const pick=chooseDisplayWeek(weeks, now);
+  const displayWeek=pick.week; const currentIdx=pick.idx;
+
+  if(displayWeek){
+    const hdr=document.createElement("div"); hdr.className="weekHdr";
+    hdr.innerHTML=`<div class="wkTitle">${weekActualLabel(displayWeek)}</div><span class="badge badge--current">Current</span>`;
+    top.appendChild(hdr); top.appendChild(renderWeekTable(cfg, displayWeek, links));
+  }
+  if(currentIdx < weeks.length-1){
+    for(let i=currentIdx+1;i<weeks.length;i++){
+      const w=weeks[i]; const block=document.createElement("div"); block.style.marginTop="22px";
+      const hdr=document.createElement("div"); hdr.className="weekHdr";
+      hdr.innerHTML=`<div class="wkTitle">${weekActualLabel(w)}</div><span class="badge badge--upcoming">Upcoming</span>`;
+      block.appendChild(hdr); block.appendChild(renderWeekTable(cfg, w, links)); list.appendChild(block);
+    }
+  }
+  if(currentIdx>0 && currentIdx<weeks.length-1){
+    const divider=document.createElement("div"); divider.className="sectionRule"; list.appendChild(divider);
+  }
+  if(currentIdx>0){
+    for(let i=0;i<currentIdx;i++){
+      const w=weeks[i]; const block=document.createElement("div"); block.style.marginTop="22px";
+      const hdr=document.createElement("div"); hdr.className="weekHdr";
+      hdr.innerHTML=`<div class="wkTitle">${weekActualLabel(w)}</div><span class="badge badge--past">Past</span>`;
+      block.appendChild(hdr); block.appendChild(renderWeekTable(cfg, w, links)); list.appendChild(block);
+    }
+  }
+}
+
+/* ===== Settings wiring ===== */
+const modal=document.getElementById("settingsModal");
+const openSettings=document.getElementById("openSettings");
+const closeSettings=document.getElementById("closeSettings");
+const semesterSel=document.getElementById("semesterSel");
+const yearInput=document.getElementById("yearInput");
+const periodInputsWrap=document.getElementById("periodInputs");
+const folderToggle=document.getElementById("folderToggle");
+const folderChooserWrap=document.getElementById("folderChooserWrap");
+const folderChooserArea=document.getElementById("folderChooserArea");
+const resetDefaults=document.getElementById("resetDefaults");
+const saveSettings=document.getElementById("saveSettings");
+const skipRowsWrap=document.getElementById("skipRows");
+const addSkipBtn=document.getElementById("addSkip");
+const gistBlock=document.getElementById("gistBlock");
+const gistTokenInp=document.getElementById("gistToken");
+const gistIdInp=document.getElementById("gistId");
+const gistSaveBtn=document.getElementById("gistSave");
+const gistStatusRow=document.getElementById("gistStatusRow");
+const gistStatus=document.getElementById("gistStatus");
+
+let tempFolderIds=["","","","","",""]; 
+let tempFolderNames=["","","","","",""];
+
+function fillPeriodInputs(periods){
+  periodInputsWrap.innerHTML="";
+  const left=document.createElement("div"); left.className="periodCol";
+  const right=document.createElement("div"); right.className="periodCol right";
+  const addRow=(col,idx)=>{
+    const row=document.createElement("div"); row.className="pRow";
+    const lab=document.createElement("label"); lab.textContent=`Period ${idx+1}`; lab.setAttribute("for",`p${idx}`);
+    const inp=document.createElement("input"); inp.id=`p${idx}`; inp.type="text"; inp.placeholder=""; inp.value=periods[idx]||""; inp.dataset.idx=idx; inp.className="full";
+    row.appendChild(lab); row.appendChild(inp); col.appendChild(row);
+  };
+  addRow(left,0); addRow(left,1); addRow(left,2);
+  addRow(right,3); addRow(right,4); addRow(right,5);
+  const wrap=document.createElement("div"); wrap.className="twoCols"; wrap.appendChild(left); wrap.appendChild(right);
+  periodInputsWrap.appendChild(wrap);
+}
+
+function renderFolderChoosers(cfg){
+  folderChooserArea.innerHTML="";
+  for(let i=0;i<6;i++){
+    const wrap=document.createElement("div"); wrap.className="folderRow";
+    const lab=document.createElement("div"); lab.textContent=`Period ${i+1}`;
+    const right=document.createElement("div");
+
+    const currentId   = tempFolderIds[i] || cfg.periodFolders[i] || "";
+    const currentName = tempFolderNames[i] || cfg.periodFolderNames?.[i] || "";
+
+    const search=document.createElement("input"); search.type="search"; search.className="long half"; search.placeholder="Search Drive folder";
+    const findBtn=document.createElement("button"); findBtn.className="btn"; findBtn.textContent="Find folder";
+    const clearBtn=document.createElement("button"); clearBtn.className="btn secondary"; clearBtn.textContent="Clear";
+
+    const selBox=document.createElement("div");
+    if(currentId){
+      selBox.className="folderBadge";
+      selBox.innerHTML=`<span>Selected:</span> <code>${currentName || "(Resolving…)"}</code>`;
+      if(currentId && !currentName){
+        (async ()=>{
+          const nm = await fetchFolderNameById(currentId);
+          if(nm){ tempFolderNames[i] = nm; selBox.innerHTML=`<span>Selected:</span> <code>${nm}</code>`; selBox.className="folderBadge"; }
+        })();
+      }
+    }
+
+    const results=document.createElement("div"); results.className="results"; results.style.display="none";
+    findBtn.addEventListener("click", async ()=>{
+      results.style.display="block"; results.innerHTML=`<div class="resultItem"><em>Searching…</em></div>`;
+      try{
+        const term=search.value.trim(); const items=await searchFolders(term);
+        if(!items.length){ results.innerHTML=`<div class="resultItem"><em>No folders found.</em></div>`; return; }
+        results.innerHTML="";
+        items.forEach(f=>{
+          const row=document.createElement("div"); row.className="resultItem";
+          const left=document.createElement("div"); left.innerHTML=`<div><strong>${f.name}</strong></div><small>ID: ${f.id}</small>`;
+          const pick=document.createElement("button"); pick.className="btn"; pick.textContent="Use this folder";
+          pick.addEventListener("click",()=>{
+            tempFolderIds[i]=f.id;
+            tempFolderNames[i]=f.name;
+            selBox.className="folderBadge";
+            selBox.innerHTML=`<span>Selected:</span> <code>${f.name}</code>`;
+            results.style.display="none";
+          });
+          row.appendChild(left); row.appendChild(pick); results.appendChild(row);
+        });
+      }catch(e){ results.innerHTML=`<div class="resultItem"><em>Error: ${e.message||e}</em></div>`; }
+    });
+
+    clearBtn.addEventListener("click",()=>{
+      tempFolderIds[i]="";
+      tempFolderNames[i]="";
+      selBox.className=""; selBox.innerHTML="";
+    });
+
+    right.appendChild(search); right.appendChild(findBtn); right.appendChild(clearBtn);
+    right.appendChild(selBox); right.appendChild(results);
+    wrap.appendChild(lab); wrap.appendChild(right); folderChooserArea.appendChild(wrap);
+  }
+}
+
+function renderSkipRows(skipWeeks){ const wrap=document.getElementById("skipRows"); wrap.innerHTML=""; if(skipWeeks&&skipWeeks.length){ skipWeeks.forEach(({from,to})=> addSkipRow(from,to)); } }
+function addSkipRow(from="",to=""){
+  const row=document.createElement("div"); row.className="skipRow";
+  const fromInp=document.createElement("input"); fromInp.type="date"; fromInp.value=from;
+  const toInp=document.createElement("input"); toInp.type="date"; toInp.value=to;
+  const delBtn=document.createElement("button"); delBtn.type="button"; delBtn.className="btn secondary"; delBtn.textContent="Remove";
+  delBtn.addEventListener("click",()=> row.remove());
+  row.appendChild(fromInp); row.appendChild(toInp); row.appendChild(delBtn);
+  document.getElementById("skipRows").appendChild(row);
+}
+function collectSkipRows(){
+  const rows=Array.from(document.querySelectorAll("#skipRows .skipRow")); const out=[];
+  rows.forEach(r=>{ const [fromInp,toInp]=r.querySelectorAll("input"); const from=fromInp?.value||""; const to=toInp?.value||""; if(from&&to) out.push({from,to}); });
+  return out;
+}
+function setFolderCollapsed(collapsed){ const expanded=!collapsed; folderToggle.setAttribute("aria-expanded", String(expanded)); folderChooserWrap.style.display=expanded?"block":"none"; }
+folderToggle.addEventListener("click",()=> setFolderCollapsed(folderChooserWrap.style.display!=="none"));
+folderToggle.addEventListener("keydown",(e)=>{ if(e.key===" "||e.key==="Enter"){ e.preventDefault(); setFolderCollapsed(folderChooserWrap.style.display!=="none"); } });
+
+/* Always show Gist block */
+function showHideGistBlock(){ gistBlock.style.display = "block"; }
+
+function openModal(){
+  const cfg=loadCfg();
+  semesterSel.value=cfg.semester||""; yearInput.value=cfg.year||"";
+  document.getElementById("firstMonday").value=cfg.firstMonday||"";
+  document.getElementById("lastFriday").value=cfg.lastFriday||"";
+  fillPeriodInputs(cfg.periods||["","","","","",""]); renderSkipRows(cfg.skipWeeks||[]);
+  tempFolderIds=[...(cfg.periodFolders||["","","","","",""])];
+  tempFolderNames=[...(cfg.periodFolderNames||["","","","","",""])];
+  renderFolderChoosers(cfg);
+  setFolderCollapsed(true);
+  document.getElementById("gistToken").value="";
+  document.getElementById("gistId").value="";
+  gistStatusRow.style.display="none";
+  showHideGistBlock();
+  modal.style.display="flex";
+}
+function closeModal(){ modal.style.display="none"; }
+
+openSettings.addEventListener("click", openModal);
+closeSettings.addEventListener("click", closeModal);
+modal.addEventListener("click",(e)=>{ if(e.target===modal) closeModal(); });
+
+addSkipBtn.addEventListener("click",()=> addSkipRow());
+
+resetDefaults.addEventListener("click",()=>{
+  saveCfg({...NEUTRAL_CFG});
+  localStorage.removeItem(LS_KEY_GH);
+  closeModal(); renderAll();
+});
+
+/* Gist mini-UI */
+gistSaveBtn.addEventListener("click", async ()=>{
+  const token = (gistTokenInp.value||"").trim();
+  const id    = (gistIdInp.value||"").trim();
+  if (!token){ alert("Please paste a GitHub token with gist access."); return; }
+  gistSaveBtn.disabled = true; gistSaveBtn.textContent = "Connecting…";
+  try{
+    const newId = await ensureGist(token, id || null);
+    saveGh({ token, gistId: newId });
+    gistStatus.textContent = "Connected";
+    gistStatusRow.style.display="grid";
+    await gistWriteAll();
+    alert("Gist connected and initial sync complete.");
+  }catch(e){
+    alert("Failed to connect to Gist: " + (e.message||e));
+  }finally{
+    gistSaveBtn.disabled = false; gistSaveBtn.textContent = "Connect Gist";
+  }
+});
+
+document.getElementById("saveSettings").addEventListener("click", async ()=>{
+  const periods=[]; const inputs=document.querySelectorAll("#periodInputs input[type='text']"); inputs.forEach(inp=>{ periods[+inp.dataset.idx]=(inp.value||"").trim(); });
+
+  const prev = loadCfg();
+  const resolvedNames = [];
+  for(let i=0;i<6;i++){ resolvedNames[i] = tempFolderIds[i] ? (tempFolderNames[i] || prev.periodFolderNames?.[i] || "") : ""; }
+
+  const next={
+    semester: semesterSel.value||"",
+    year: (document.getElementById("yearInput").value||"").trim(),
+    periods,
+    periodFolders: tempFolderIds,
+    periodFolderNames: resolvedNames,
+    firstMonday: (document.getElementById("firstMonday").value||""),
+    lastFriday:  (document.getElementById("lastFriday").value ||""),
+    skipWeeks: collectSkipRows(),
+    labelsFinalized:true
+  };
+
+  saveCfg(next); closeModal(); renderAll();
+
+  if (GOOGLE.authed) { const ok = await writeSyncToDrive(buildSyncPayload()); if (!ok) console.warn("Drive sync (settings) failed"); }
+  gistWriteAll().catch(()=>{});
+});
+
+/* ===== Auth buttons ===== */
+document.getElementById("authBtn").addEventListener("click", async ()=>{
+  setAuthUiState({error:null});
+  const ok = await ensureSignedIn();
+  if (!ok) return;
+
+  const cloud = await readSyncFromDrive();
+  if (cloud) { applyCloudPayload(cloud); renderAll(); }
+});
+document.getElementById("signoutBtn").addEventListener("click", async ()=>{ await signOut(); });
+
+/* ===== Init ===== */
+(async function initOnLoad(){
+  try{
+    if(!localStorage.getItem(LS_KEY_CFG)) saveCfg({...NEUTRAL_CFG});
+
+    await loadGapiClient();
+    await loadGis();
+    await initAuth();
+    setAuthUiState({enabled:true, text:"Connect Google Drive", error:null});
+
+    const meta = loadAuthMeta();
+    if (meta.granted){
+      const ok = await trySilentSignIn();
+      if (ok){ GOOGLE.authed = true; }
+    }
+
+    updateAuthUi();
+    scheduleSilentRefresh();
+    attachEditToggle();
+    renderAll();
+
+    if (GOOGLE.authed) {
+      const cloud = await readSyncFromDrive();
+      if (cloud) { applyCloudPayload(cloud); renderAll(); }
+    }
+
+    const gh = loadGh();
+    if (gh.token && gh.gistId){
+      const fromGist = await gistReadAll();
+      if (fromGist){
+        if (fromGist.cfg) saveCfg(fromGist.cfg);
+        if (fromGist.linksBySemester) localStorage.setItem(LS_KEY_LINKS, JSON.stringify(fromGist.linksBySemester));
+        renderAll();
+      }
+    }
+  }catch(e){
+    const msg = (e && (e.error_description || e.message)) || String(e);
+    setAuthUiState({enabled:false, text:"Google failed to load", error: msg});
+  }
+})();
+
+/* ===== periodic refresh ===== */
+setInterval(()=>{ renderAll(); }, 60*1000);
+</script>
+</body>
+</html>
