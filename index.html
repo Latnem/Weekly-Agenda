@@ -4,7 +4,7 @@
 <meta charset="utf-8" />
 <meta http-equiv="Referrer-Policy" content="strict-origin-when-cross-origin">
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Weekly Agendas — Drive AppData Sync + Folder Names</title>
+<title>Weekly Agendas — Drive AppData + Optional Gist Backup</title>
 <style>
   :root{ --ink:#111; --muted:#666; --link:#2166c2; --ring:#1697BB; --bg:#fff; --border:#e5e7eb; }
   html,body{font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial; color:var(--ink); background:#fff; margin:0}
@@ -52,7 +52,7 @@
   input[type="search"], input[type="text"], select, input[type="number"], input[type="date"]{
     border:1px solid #ccc; border-radius:10px; padding:8px 10px; width:140px; min-width:120px; outline:none; background:#fff;
   }
-  input.long{width:260px} input.full{width:100%} input::placeholder{ color:#888; }
+  input.long{width:260px} input.half{width:130px} input.full{width:100%} input::placeholder{ color:#888; }
   input:focus, select:focus{border-color:var(--ring); box-shadow:0 0 0 3px #1697bb33}
   #yearInput{ width:6.5ch; min-width:5.5ch; max-width:8ch; }
 
@@ -112,6 +112,14 @@
   .inlineSearch{display:flex; gap:8px; align-items:center; padding:8px 12px; background:#fbfbfb; border-bottom:1px solid #efefef}
   .inlineSearch input{width:260px}
   .scopeTag{font-size:12px;color:#6b7280}
+
+  /* --- Gist section --- */
+  .gistWrap{margin-top:16px; border:1px dashed var(--border); border-radius:12px; padding:12px; background:#fafafa}
+  .gistRow{display:grid; grid-template-columns:140px auto auto; gap:8px; align-items:center; margin:6px 0;}
+  .gistRow label{text-align:center; font-size:13px;}
+  .gistBadge{display:inline-flex; align-items:center; gap:6px; padding:4px 10px; border:1px solid #cbd5e1; border-radius:999px; background:#f1f5f9; font-size:12px}
+  #gistToken{ width:220px; } /* narrower token input */
+  #gistId{ width:260px; }
 </style>
 </head>
 <body>
@@ -168,7 +176,7 @@
           </div>
           <div class="fRow">
             <label for="yearInput">Year</label>
-            <input id="yearInput" type="number" min="2000" max="2100" step="1" placeholder="" />
+            <input id="yearInput" type="number" min="2000" max="2100" step="1" />
           </div>
         </div>
 
@@ -206,13 +214,30 @@
           <div id="folderChooserArea" style="margin-top:10px;"></div>
         </div>
       </div>
+
+      <!-- Tiny Gist connect section (token once, hides after save; shows on Reset) -->
+      <div id="gistBlock" class="gistWrap" style="display:none;">
+        <div class="gistRow">
+          <label for="gistToken">GitHub Token</label>
+          <input id="gistToken" type="password" />
+          <button id="gistSave" class="btn" type="button">Connect Gist</button>
+        </div>
+        <div class="gistRow">
+          <label for="gistId">Gist ID (optional)</label>
+          <input id="gistId" type="text" />
+          <div></div>
+        </div>
+        <div class="gistRow" id="gistStatusRow" style="display:none;">
+          <label>Status</label>
+          <div class="gistBadge" id="gistStatus">…</div>
+          <div></div>
+        </div>
+      </div>
     </div>
 
     <footer>
       <div class="row">
         <button id="resetDefaults" class="btn secondary">Reset to Default</button>
-        <button id="saveBaseline" class="btn secondary">Save as Baseline</button>
-        <button id="loadBaseline" class="btn secondary">Load Baseline</button>
       </div>
       <div class="row">
         <button id="saveSettings" class="btn" style="border-color:#10b981;background:#ecfdf5;color:#065f46">Save &amp; Generate</button>
@@ -244,11 +269,10 @@ const GOOGLE = {
 /* ===== LocalStorage keys ===== */
 const LS_KEY_LINKS   = "agenda_links_by_semester";
 const LS_KEY_CFG     = "agenda_master_template_neutral_v1";
-const LS_KEY_BASELINE= "agenda_master_baseline_v1";
-const LS_KEY_GH      = "agenda_github_sync_v1";
+const LS_KEY_GH      = "agenda_github_sync_v1"; // {token, gistId}
 const LS_KEY_AUTH    = "agenda_auth_meta_v1";
 
-/* ===== Neutral defaults (now include periodFolderNames) ===== */
+/* ===== Neutral defaults ===== */
 const NEUTRAL_CFG = {
   semester:"", year:"",
   periods:["","","","","",""],
@@ -279,14 +303,12 @@ function formatRangeFull(a,b){
 }
 
 /* ===== Config & links persistence ===== */
-function saveBaselineCfg(cfg){ localStorage.setItem(LS_KEY_BASELINE, JSON.stringify(cfg)); }
-function loadBaselineCfg(){ try{ return JSON.parse(localStorage.getItem(LS_KEY_BASELINE) || "null"); }catch{ return null; } }
 function loadCfg(){ const raw = localStorage.getItem(LS_KEY_CFG); if(!raw) return {...NEUTRAL_CFG};
   try{ const cfg = JSON.parse(raw);
     cfg.semester ??=""; cfg.year ??="";
     if(!Array.isArray(cfg.periods)||cfg.periods.length!==6) cfg.periods=["","","","","",""];
     if(!Array.isArray(cfg.periodFolders)||cfg.periodFolders.length!==6) cfg.periodFolders=["","","","","",""];
-    if(!Array.isArray(cfg.periodFolderNames)||cfg.periodFolderNames.length!==6) cfg.periodFolderNames=["","","","","",""]; // ensure names
+    if(!Array.isArray(cfg.periodFolderNames)||cfg.periodFolderNames.length!==6) cfg.periodFolderNames=["","","","","",""];
     cfg.firstMonday ??=""; cfg.lastFriday ??="";
     if(!Array.isArray(cfg.skipWeeks)) cfg.skipWeeks=[];
     cfg.labelsFinalized = !!cfg.labelsFinalized; return cfg;
@@ -301,7 +323,7 @@ function saveLinksFor(cfg, linksObj){
   localStorage.setItem(LS_KEY_LINKS, JSON.stringify(all));
 }
 
-/* ===== Google auth robust loader ===== */
+/* ===== Google auth loader ===== */
 let tokenClient = null; let gapiReady = false; let gisReady = false; let refreshTimer = null;
 
 function setAuthUiState({enabled, text, error}){
@@ -572,6 +594,58 @@ function buildMultipartBody(metadataObj, mediaText, mediaType){
   return { boundary, body };
 }
 
+/* ===== Optional GitHub Gist backup (silent once connected) ===== */
+function loadGh(){ try{ return JSON.parse(localStorage.getItem(LS_KEY_GH)||"{}"); }catch{ return {}; } }
+function saveGh(obj){ localStorage.setItem(LS_KEY_GH, JSON.stringify(obj||{})); }
+async function gistRequest(method, path, body, token){
+  const res=await fetch(`https://api.github.com${path}`,{
+    method,
+    headers:{
+      "Accept":"application/vnd.github+json",
+      "Authorization":`Bearer ${token}`,
+      "Content-Type":"application/json"
+    },
+    body: body?JSON.stringify(body):undefined
+  });
+  if(!res.ok) throw new Error(`${res.status} ${res.statusText}`);
+  try{ return await res.json(); }catch{ return null; }
+}
+async function ensureGist(token, gistId){
+  if (gistId) return gistId;
+  const files = {
+    "agenda-config.json": { content: JSON.stringify(loadCfg(), null, 2) },
+    "agenda-links.json":  { content: JSON.stringify(JSON.parse(localStorage.getItem(LS_KEY_LINKS)||"{}"), null, 2) }
+  };
+  const r = await gistRequest("POST", "/gists", { description:"Weekly Agenda Sync", public:false, files }, token);
+  return r?.id || null;
+}
+async function gistWriteAll(){
+  const gh = loadGh(); if(!gh.token) return false;
+  try{
+    gh.gistId = await ensureGist(gh.token, gh.gistId || null);
+    saveGh(gh);
+    const files = {
+      "agenda-config.json": { content: JSON.stringify(loadCfg(), null, 2) },
+      "agenda-links.json":  { content: JSON.stringify(JSON.parse(localStorage.getItem(LS_KEY_LINKS)||"{}"), null, 2) }
+    };
+    await gistRequest("PATCH", `/gists/${gh.gistId}`, { files }, gh.token);
+    return true;
+  }catch(e){ console.warn("Gist write failed:", e.message||e); return false; }
+}
+async function gistReadAll(){
+  const gh = loadGh(); if(!gh.token || !gh.gistId) return null;
+  try{
+    const r = await gistRequest("GET", `/gists/${gh.gistId}`, null, gh.token);
+    const files = r?.files || {};
+    const cfgText = files["agenda-config.json"]?.content;
+    const linksText = files["agenda-links.json"]?.content;
+    const payload = {};
+    if (cfgText){ payload.cfg = JSON.parse(cfgText); }
+    if (linksText){ payload.linksBySemester = JSON.parse(linksText); }
+    return payload;
+  }catch(e){ console.warn("Gist read failed:", e.message||e); return null; }
+}
+
 /* ===== Weeks build & render ===== */
 function buildWeeks(cfg){
   const startRaw = toDateAtMidnight(cfg.firstMonday);
@@ -708,9 +782,8 @@ function renderWeekTable(cfg, w, links){
                   all[w.n][idx] = { id:f.id, name:f.name, slideId:s.objectId, url:f.webViewLink };
                   saveLinksFor(cfg, all);
 
-                  if (GOOGLE.authed) {
-                    writeSyncToDrive(buildSyncPayload()).catch(()=>console.warn("Drive sync (link) failed"));
-                  }
+                  if (GOOGLE.authed) { writeSyncToDrive(buildSyncPayload()).catch(()=>{}); }
+                  gistWriteAll().catch(()=>{});
 
                   subjectWrap.innerHTML = `<a class="link" href="${slideLink(f.id, s.objectId)}" target="_blank" rel="noopener">${periodLabel}</a>`;
                   closeResults();
@@ -750,14 +823,22 @@ function renderWeekTable(cfg, w, links){
         bar.appendChild(qInput); bar.appendChild(btnGo); bar.appendChild(scope);
         results.appendChild(bar);
 
+        // Pre-fill and auto-run based on Semester (Fall/Spring)
+        const sem = (loadCfg().semester || "").trim();
+        const semSuffix = (sem === "Fall" || sem === "Spring") ? `${sem} Agendas` : "";
+        const defaultQuery = (periodLabel ? `${periodLabel} ${semSuffix}`.trim() : semSuffix) || periodLabel || "";
+        qInput.value = defaultQuery;
+
         async function runSearch(){
-          const term = qInput.value.trim() || periodLabel;
+          const term = qInput.value.trim() || periodLabel || "";
           const files = await searchSlides(term, folderId || "");
           renderFileRows(files);
         }
         btnGo.addEventListener("click", (ev)=>{ ev.stopPropagation(); runSearch(); });
         qInput.addEventListener("keydown", (ev)=>{ if(ev.key==="Enter"){ ev.preventDefault(); ev.stopPropagation(); runSearch(); } });
 
+        // Auto-run immediately
+        runSearch();
         setTimeout(()=> qInput.focus(), 0);
 
       }catch(err){
@@ -789,9 +870,8 @@ function renderWeekTable(cfg, w, links){
   async function finalizeNotes(){
     const txt=notesDiv.textContent||"";
     const all=loadLinksFor(cfg); all[w.n]=all[w.n]||{}; all[w.n].notes=txt; saveLinksFor(cfg, all);
-    if (GOOGLE.authed) {
-      writeSyncToDrive(buildSyncPayload()).catch(()=>console.warn("Drive sync (notes) failed"));
-    }
+    if (GOOGLE.authed) { writeSyncToDrive(buildSyncPayload()).catch(()=>{}); }
+    gistWriteAll().catch(()=>{});
     exitEdit();
   }
   function exitEdit(){ notesDiv.contentEditable="false"; notesDiv.classList.remove("isEditing"); }
@@ -844,7 +924,7 @@ function renderAll(){
   }
 }
 
-/* ===== Settings wiring (now with folder names) ===== */
+/* ===== Settings wiring (incl. smaller folder inputs & Gist connect) ===== */
 const modal=document.getElementById("settingsModal");
 const openSettings=document.getElementById("openSettings");
 const closeSettings=document.getElementById("closeSettings");
@@ -855,13 +935,15 @@ const folderToggle=document.getElementById("folderToggle");
 const folderChooserWrap=document.getElementById("folderChooserWrap");
 const folderChooserArea=document.getElementById("folderChooserArea");
 const resetDefaults=document.getElementById("resetDefaults");
-const saveBaselineBtn=document.getElementById("saveBaseline");
-const loadBaselineBtn=document.getElementById("loadBaseline");
 const saveSettings=document.getElementById("saveSettings");
-const firstMondayInp=document.getElementById("firstMonday");
-const lastFridayInp=document.getElementById("lastFriday");
 const skipRowsWrap=document.getElementById("skipRows");
 const addSkipBtn=document.getElementById("addSkip");
+const gistBlock=document.getElementById("gistBlock");
+const gistTokenInp=document.getElementById("gistToken");
+const gistIdInp=document.getElementById("gistId");
+const gistSaveBtn=document.getElementById("gistSave");
+const gistStatusRow=document.getElementById("gistStatusRow");
+const gistStatus=document.getElementById("gistStatus");
 
 let tempFolderIds=["","","","","",""]; 
 let tempFolderNames=["","","","","",""];
@@ -892,7 +974,7 @@ function renderFolderChoosers(cfg){
     const currentId   = tempFolderIds[i] || cfg.periodFolders[i] || "";
     const currentName = tempFolderNames[i] || cfg.periodFolderNames?.[i] || "";
 
-    const search=document.createElement("input"); search.type="search"; search.className="long"; search.placeholder="Search Drive folder";
+    const search=document.createElement("input"); search.type="search"; search.className="long half"; search.placeholder="Search Drive folder";
     const findBtn=document.createElement("button"); findBtn.className="btn"; findBtn.textContent="Find folder";
     const clearBtn=document.createElement("button"); clearBtn.className="btn secondary"; clearBtn.textContent="Clear";
 
@@ -966,29 +1048,24 @@ function setFolderCollapsed(collapsed){ const expanded=!collapsed; folderToggle.
 folderToggle.addEventListener("click",()=> setFolderCollapsed(folderChooserWrap.style.display!=="none"));
 folderToggle.addEventListener("keydown",(e)=>{ if(e.key===" "||e.key==="Enter"){ e.preventDefault(); setFolderCollapsed(folderChooserWrap.style.display!=="none"); } });
 
-async function openModal(){
+function showHideGistBlock(){
+  const gh = loadGh();
+  const has = !!gh.token;
+  gistBlock.style.display = has ? "none" : "block";
+}
+function openModal(){
   const cfg=loadCfg();
   semesterSel.value=cfg.semester||""; yearInput.value=cfg.year||"";
   document.getElementById("firstMonday").value=cfg.firstMonday||"";
   document.getElementById("lastFriday").value=cfg.lastFriday||"";
   fillPeriodInputs(cfg.periods||["","","","","",""]); renderSkipRows(cfg.skipWeeks||[]);
-
-  // Prepare temp arrays; and resolve any missing names from IDs once
   tempFolderIds=[...(cfg.periodFolders||["","","","","",""])];
   tempFolderNames=[...(cfg.periodFolderNames||["","","","","",""])];
-  const lookups=[];
-  for(let i=0;i<6;i++){
-    if (tempFolderIds[i] && !tempFolderNames[i]) {
-      lookups.push((async (idx)=>{
-        const nm = await fetchFolderNameById(tempFolderIds[idx]);
-        if(nm){ tempFolderNames[idx]=nm; }
-      })(i));
-    }
-  }
-  await Promise.all(lookups);
-
   renderFolderChoosers(cfg);
-  setFolderCollapsed(true); 
+  setFolderCollapsed(true);
+  gistTokenInp.value=""; gistIdInp.value="";
+  gistStatusRow.style.display="none";
+  showHideGistBlock();
   modal.style.display="flex";
 }
 function closeModal(){ modal.style.display="none"; }
@@ -999,26 +1076,39 @@ modal.addEventListener("click",(e)=>{ if(e.target===modal) closeModal(); });
 
 addSkipBtn.addEventListener("click",()=> addSkipRow());
 
-resetDefaults.addEventListener("click",()=>{ saveCfg({...NEUTRAL_CFG}); closeModal(); renderAll(); });
-document.getElementById("saveBaseline").addEventListener("click", ()=>{
-  saveBaselineCfg(loadCfg());
-  const btn=document.getElementById("saveBaseline"); btn.textContent="Baseline Saved ✓"; setTimeout(()=> btn.textContent="Save as Baseline",1500);
+resetDefaults.addEventListener("click",()=>{
+  saveCfg({...NEUTRAL_CFG});
+  localStorage.removeItem(LS_KEY_GH); // remove Gist connection -> shows again next time
+  closeModal(); renderAll();
 });
-document.getElementById("loadBaseline").addEventListener("click", ()=>{
-  const base=loadBaselineCfg(); const btn=document.getElementById("loadBaseline");
-  if(!base){ btn.textContent="No Baseline Found"; setTimeout(()=> btn.textContent="Load Baseline",1500); return; }
-  saveCfg(base); closeModal(); renderAll();
+
+/* Gist mini-UI */
+gistSaveBtn.addEventListener("click", async ()=>{
+  const token = (gistTokenInp.value||"").trim();
+  const id    = (gistIdInp.value||"").trim();
+  if (!token){ alert("Please paste a GitHub token with gist access."); return; }
+  gistSaveBtn.disabled = true; gistSaveBtn.textContent = "Connecting…";
+  try{
+    const newId = await ensureGist(token, id || null);
+    saveGh({ token, gistId: newId });
+    gistStatus.textContent = "Connected";
+    gistStatusRow.style.display="grid";
+    gistBlock.style.display = "none"; // hide after connect
+    await gistWriteAll(); // initial push
+    alert("Gist connected and initial sync complete.");
+  }catch(e){
+    alert("Failed to connect to Gist: " + (e.message||e));
+  }finally{
+    gistSaveBtn.disabled = false; gistSaveBtn.textContent = "Connect Gist";
+  }
 });
 
 document.getElementById("saveSettings").addEventListener("click", async ()=>{
   const periods=[]; const inputs=document.querySelectorAll("#periodInputs input[type='text']"); inputs.forEach(inp=>{ periods[+inp.dataset.idx]=(inp.value||"").trim(); });
 
-  // Merge names appropriately based on currently chosen IDs
   const prev = loadCfg();
   const resolvedNames = [];
-  for(let i=0;i<6;i++){
-    resolvedNames[i] = tempFolderIds[i] ? (tempFolderNames[i] || prev.periodFolderNames?.[i] || "") : "";
-  }
+  for(let i=0;i<6;i++){ resolvedNames[i] = tempFolderIds[i] ? (tempFolderNames[i] || prev.periodFolderNames?.[i] || "") : ""; }
 
   const next={
     semester: semesterSel.value||"",
@@ -1034,10 +1124,8 @@ document.getElementById("saveSettings").addEventListener("click", async ()=>{
 
   saveCfg(next); closeModal(); renderAll();
 
-  if (GOOGLE.authed) {
-    const ok = await writeSyncToDrive(buildSyncPayload());
-    if (!ok) console.warn("Drive sync (settings) failed");
-  }
+  if (GOOGLE.authed) { const ok = await writeSyncToDrive(buildSyncPayload()); if (!ok) console.warn("Drive sync (settings) failed"); }
+  gistWriteAll().catch(()=>{});
 });
 
 /* ===== Auth buttons ===== */
@@ -1052,7 +1140,7 @@ document.getElementById("authBtn").addEventListener("click", async ()=>{
 });
 document.getElementById("signoutBtn").addEventListener("click", async ()=>{ await signOut(); });
 
-/* ===== Init: wait for libs; silent sign-in; render; pull cloud if authed ===== */
+/* ===== Init: wait libs; silent sign-in; render; pull cloud/gist if present ===== */
 (async function initOnLoad(){
   try{
     if(!localStorage.getItem(LS_KEY_CFG)) saveCfg({...NEUTRAL_CFG});
@@ -1076,13 +1164,24 @@ document.getElementById("signoutBtn").addEventListener("click", async ()=>{ awai
       const cloud = await readSyncFromDrive();
       if (cloud) { applyCloudPayload(cloud); renderAll(); }
     }
+
+    // If Gist is connected, pull from it once
+    const gh = loadGh();
+    if (gh.token && gh.gistId){
+      const fromGist = await gistReadAll();
+      if (fromGist){
+        if (fromGist.cfg) saveCfg(fromGist.cfg);
+        if (fromGist.linksBySemester) localStorage.setItem(LS_KEY_LINKS, JSON.stringify(fromGist.linksBySemester));
+        renderAll();
+      }
+    }
   }catch(e){
     const msg = (e && (e.error_description || e.message)) || String(e);
     setAuthUiState({enabled:false, text:"Google failed to load", error: msg});
   }
 })();
 
-/* ===== Refresh render every minute (Saturday roll-over) ===== */
+/* ===== periodic refresh for Saturday rollover ===== */
 setInterval(()=>{ renderAll(); }, 60*1000);
 </script>
 </body>
