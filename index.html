@@ -1066,9 +1066,7 @@ folderToggle.addEventListener("click",()=> setFolderCollapsed(folderChooserWrap.
 folderToggle.addEventListener("keydown",(e)=>{ if(e.key===" "||e.key==="Enter"){ e.preventDefault(); setFolderCollapsed(folderChooserWrap.style.display!=="none"); } });
 
 function showHideGistBlock(){
-  const gh = loadGh();
-  const has = !!gh.token;
-  gistBlock.style.display = has ? "none" : "block";
+  gistBlock.style.display = "block";
 }
 function openModal(){
   const cfg=loadCfg();
