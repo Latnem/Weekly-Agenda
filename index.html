@@ -749,7 +749,10 @@ function renderWeekTable(cfg, w, links){
 
   (cfg.periods||[]).forEach((periodLabel,idx)=>{
     const td=document.createElement("td");
-    if(!periodLabel){ td.innerHTML=`<div class="muted">Conference</div>`; tr.appendChild(td); return; }
+    const rawLabel = (periodLabel || "").trim();
+    const isConference = (!rawLabel) || rawLabel.toLowerCase() === "conference";
+    if(isConference){ td.innerHTML=`<div class="muted">Conference</div>`; tr.appendChild(td); return; }
+    const periodText = rawLabel;
 
     const saved = linksForWeek[idx];
     const subjectWrap = document.createElement("div");
@@ -758,10 +761,10 @@ function renderWeekTable(cfg, w, links){
 
     if(saved){
       const href = saved.slideId ? slideLink(saved.id, saved.slideId) : (saved.url || "#");
-      subjectWrap.innerHTML = `<a class="link" href="${href}" target="_blank" rel="noopener">${periodLabel}</a>`;
+      subjectWrap.innerHTML = `<a class="link" href="${href}" target="_blank" rel="noopener">${periodText}</a>`;
       (() => { try { const _a = subjectWrap.querySelector("a"); if(_a){ _a.addEventListener("dblclick", (e)=>{ if(!isEditing()) return; e.preventDefault(); e.stopPropagation(); try { openResults(); } catch(_){} }); } } catch(_){} })();
     } else {
-      subjectWrap.innerHTML = `<span class="muted">${periodLabel}</span><div class="dblHint">double-click to link</div>`;
+      subjectWrap.innerHTML = `<span class="muted">${periodText}</span><div class="dblHint">double-click to link</div>`;
     }
 
     const results = document.createElement("div");
@@ -830,7 +833,7 @@ function renderWeekTable(cfg, w, links){
                   if (GOOGLE.authed) { writeSyncToDrive(buildSyncPayload()).catch(()=>{}); }
                   gistWriteAll().catch(()=>{});
 
-                  subjectWrap.innerHTML = `<a class="link" href="${slideLink(f.id, s.objectId)}" target="_blank" rel="noopener">${periodLabel}</a>`;
+                  subjectWrap.innerHTML = `<a class="link" href="${slideLink(f.id, s.objectId)}" target="_blank" rel="noopener">${periodText}</a>`;
                   (() => { try { const _a = subjectWrap.querySelector("a"); if(_a){ _a.addEventListener("dblclick", (e)=>{ if(!isEditing()) return; e.preventDefault(); e.stopPropagation(); try { openResults(); } catch(_){} }); } } catch(_){} })();
                   closeResults();
                 });
