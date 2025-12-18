@@ -125,16 +125,16 @@
   .scopeTag{font-size:12px;color:#6b7280}
 
   /* Gist section */
-  .gistWrap{margin-top:0;  border:1px dashed var(--border); border-radius:12px; padding:12px; background:#fafafa}
+  .gistWrap{display:inline-block;margin-top:0;  border:1px dashed var(--border); border-radius:12px; padding:12px; background:#fafafa}
   .gistRow{display:grid; gap:8px; align-items:center; margin:6px 0;}
 .gistRow.compact{grid-template-columns:105px 1fr;}
-.gistBtns{display:flex; flex-direction:column; align-items:flex-start; gap:8px; margin-top:8px;}
+.gistBtns{display:flex; flex-direction:row; flex-wrap:wrap; align-items:center; gap:8px; margin-top:8px;}
 .gistBtns .btn{width:auto;}
-.periodAndGist{display:flex; gap:12px; align-items:flex-start;}
+.periodAndGist{display:flex; flex-direction:column; gap:12px; align-items:flex-start;}
 .periodAndGist .periodNames{flex:1;}
 .periodAndGist #gistBlock{flex:0 0 260px; max-width:320px;}
 @media (max-width: 900px){
-  .periodAndGist{flex-direction:column;}
+  .periodAndGist{display:flex; flex-direction:column; gap:12px; align-items:flex-start;}
   .periodAndGist #gistBlock{max-width:unset; width:100%; flex:unset;}
 } .periodAndGist #gistBlock{max-width:unset; width:100%; flex:unset;} }
   .gistRow label{text-align:center; font-size:13px;}
@@ -147,7 +147,347 @@
   justify-self: start;     /* prevent grid stretch */
   width: fit-content;      /* size to its label */
 }
+
+  .gistBtns .btn{margin:0; padding:6px 10px;}
 </style>
+
+<style>
+/* Minimal standalone Gist panel (no stretched gray box) */
+.gistPanel{
+  display:inline-flex;
+  flex-direction:column;
+  gap:8px;
+  padding:10px 12px;
+  border:1px solid rgba(0,0,0,.12);
+  border-radius:12px;
+  background:transparent;
+  width:fit-content;
+  max-width:100%;
+  align-self:flex-start;
+}
+.gistPanelHead{
+  font-weight:600;
+  font-size:13px;
+  opacity:.85;
+  margin-bottom:2px;
+}
+.gistPanel #gistBlock{margin-top:0 !important;}
+</style>
+
+
+<style>
+/* === Final Gist Panel Polish === */
+
+/* Equal width for GitHub Token + Gist ID */
+#gistToken,
+#gistId {
+  width: 320px !important;
+  max-width: 320px !important;
+  box-sizing: border-box !important;
+}
+
+/* Auto-fit panel, no cut-off, no stretch */
+.gistPanel{
+  display:inline-flex !important;
+  flex-direction:column !important;
+  gap:8px !important;
+  padding:10px 12px !important;
+  width: fit-content !important;
+  max-width: 100% !important;
+  align-self:flex-start !important;
+}
+
+/* Ensure inner rows don't force width */
+.gistPanel .gistRow,
+.gistPanel .gistBtns{
+  width:auto !important;
+}
+</style>
+
+
+<style>
+/* Add comfortable spacing above the Gist panel */
+.gistPanel{
+  margin-top: 12px !important; /* whitespace from content above */
+}
+</style>
+
+
+<style>
+/* Remove border around GitHub Token / Gist ID panel */
+.gistPanel{
+  border: none !important;
+}
+</style>
+
+
+<style>
+/* Add spacing after "Restrict period to a Google Drive folder (optional)" */
+#folderToggle,
+.folderToggle,
+.restrictFolderBtn {
+  margin-bottom: 12px !important;
+}
+
+/* Tighten vertical spacing between Semester/Year and First/Last Week */
+.semesterRow,
+.yearRow,
+.semesterYear,
+.semesterYearRow {
+  margin-bottom: 6px !important;
+}
+
+.firstLastWeekRow,
+.weekRangeRow {
+  margin-top: 6px !important;
+}
+</style>
+
+
+<style>
+/* === Compact Settings Spacing === */
+
+/* Semester / Year row: reduce bottom spacing */
+.semesterRow,
+.semesterYear,
+.semesterYearRow,
+.yearRow {
+  margin-bottom: 4px !important;
+}
+
+/* First / Last Week row: reduce top spacing */
+.firstLastWeekRow,
+.weekRangeRow {
+  margin-top: 4px !important;
+}
+
+/* General field tightening inside Settings */
+.settingsPanel .field,
+.settingsPanel .fieldsForm {
+  gap: 6px !important;
+}
+</style>
+
+
+<style>
+/* 2x2 compact grid for Year/Semester + First/Last week */
+.topCols{
+  display:grid !important;
+  grid-template-columns: max-content max-content !important;
+  column-gap: 12px !important;
+  row-gap: 10px !important;
+  justify-content: start !important;
+  align-items: start !important;
+  margin-bottom: 10px !important;
+}
+
+/* Keep row blocks compact and consistent */
+.topCols .fRow{
+  margin: 0 !important;
+}
+
+/* Match Year and Semester widths for uniform look (not too small) */
+#yearInput,
+#semesterSel{
+  width: 160px !important;
+  max-width: 160px !important;
+  box-sizing: border-box;
+}
+
+/* Keep date inputs compact too */
+#firstMonday,
+#lastFriday{
+  width: 160px !important;
+  max-width: 160px !important;
+  box-sizing: border-box;
+}
+</style>
+
+
+<style>
+/* Center text inside Year & Semester select menus */
+#yearInput,
+#semesterSel {
+  text-align: center;
+  text-align-last: center; /* Chrome/Edge */
+}
+
+/* Ensure options also appear centered when opened (best-effort across browsers) */
+#yearInput option,
+#semesterSel option {
+  text-align: center;
+}
+</style>
+
+
+<style>
+/* === Widths (chosen) ===
+   Year/Semester: 140px
+   First/Last week: 120px
+*/
+#yearInput,
+#semesterSel{
+  width: 140px !important;
+  max-width: 140px !important;
+  box-sizing: border-box !important;
+}
+#firstMonday,
+#lastFriday{
+  width: 140px !important;
+  max-width: 140px !important;
+  box-sizing: border-box !important;
+}
+
+/* === Nicer dropdowns (applies to all selects, including Year/Semester) === */
+select{
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+  border: 1px solid rgba(0,0,0,.20);
+  border-radius: 10px;
+  background-color: #fff;
+  padding: 6px 34px 6px 10px; /* room for arrow */
+  font-size: 13px;
+  line-height: 1.2;
+  height: 32px;
+  box-shadow: 0 1px 0 rgba(0,0,0,.03);
+  transition: border-color .12s ease, box-shadow .12s ease, transform .02s ease;
+}
+
+/* custom arrow */
+select{
+  background-image:
+    linear-gradient(45deg, transparent 50%, rgba(0,0,0,.55) 50%),
+    linear-gradient(135deg, rgba(0,0,0,.55) 50%, transparent 50%),
+    linear-gradient(to right, transparent, transparent);
+  background-position:
+    calc(100% - 18px) 13px,
+    calc(100% - 12px) 13px,
+    calc(100% - 2.2em) 0.35em;
+  background-size: 6px 6px, 6px 6px, 1px 1.6em;
+  background-repeat: no-repeat;
+}
+select:hover{
+  border-color: rgba(0,0,0,.28);
+}
+select:active{
+  transform: translateY(0.5px);
+}
+select:focus{
+  outline: none;
+  border-color: rgba(0,0,0,.45);
+  box-shadow: 0 0 0 3px rgba(0, 120, 255, .18);
+}
+select:disabled{
+  opacity: .55;
+  cursor: not-allowed;
+  background-color: rgba(0,0,0,.04);
+}
+
+/* Keep Year/Semester centered like you wanted (selected value) */
+#yearInput,
+#semesterSel{
+  text-align: center;
+  text-align-last: center;
+}
+#yearInput option,
+#semesterSel option{
+  text-align: center;
+}
+
+/* Make date inputs visually match selects a bit better */
+input[type="date"]{
+  border: 1px solid rgba(0,0,0,.20);
+  border-radius: 10px;
+  height: 32px;
+  padding: 6px 10px;
+  font-size: 13px;
+  box-shadow: 0 1px 0 rgba(0,0,0,.03);
+}
+input[type="date"]:focus{
+  outline: none;
+  border-color: rgba(0,0,0,.45);
+  box-shadow: 0 0 0 3px rgba(0, 120, 255, .18);
+}
+</style>
+
+
+<style>
+/* === Normalize control heights so date inputs match selects exactly === */
+select,
+input[type="date"]{
+  height: 32px !important;
+  min-height: 32px !important;
+  line-height: 32px !important;
+  box-sizing: border-box !important;
+  padding-top: 0 !important;
+  padding-bottom: 0 !important;
+}
+</style>
+
+
+<style>
+/* Auto-fit Settings window width without affecting inner layout */
+.settingsPanel{
+  width: fit-content !important;
+  max-width: 100% !important;
+}
+</style>
+
+
+<style>
+/* === Fix 1: Keep Gist buttons (Connect / Sync / Update) RIGHT-aligned === */
+.gistBtns{
+  display:flex !important;
+  width:100% !important;
+  justify-content:flex-end !important;
+  gap:8px !important;
+}
+
+/* === Fix 2: Settings window should hug content (no empty white space on the right) === */
+/* Only affects the Settings modal container; inner layout unchanged */
+
+</style>
+
+
+<style>
+/* === SETTINGS MODAL: content-fit width (no extra white space) ===
+   We only change the modal sizing behavior, not the inner layout. */
+#settingsModal{
+  align-items: flex-start !important; /* avoid vertical centering quirks */
+}
+
+
+</style>
+
+
+
+
+
+<style>
+/* === Settings modal: comfortable width, no cut-off === */
+
+
+/* Ensure body area scrolls instead of cutting off content */
+
+</style>
+
+
+<style>
+/* === Settings modal: slightly taller, comfortable scrolling === */
+#settingsModal .modal{
+  width: 600px !important;
+  max-width: 92vw !important;
+  max-height: 94vh !important; /* increased height */
+  overflow-y: auto !important;
+}
+
+#settingsModal .modal .body{
+  max-height: calc(94vh - 64px) !important;
+  overflow-y: auto !important;
+}
+</style>
+
 </head>
 <body>
 <div class="wrap">
@@ -207,30 +547,25 @@
     </header>
     <div class="body">
       <div class="topCols">
-        <div class="fieldsForm">
-          <div class="fRow">
-            <label for="semesterSel">Semester</label>
-            <select id="semesterSel">
-              <option value="">— Select —</option>
-              <option value="Fall">Fall</option>
-              <option value="Spring">Spring</option>
-            </select>
-          </div>
-          <div class="fRow">
-            <label for="yearInput">Year</label>
-            <input id="yearInput" type="number" min="2025" max="2100" step="1" />
-          </div>
+        <div class="fRow">
+          <label for="yearInput">Year</label>
+          <select id="yearInput"><option value="" selected hidden></option></select>
         </div>
-
-        <div class="fieldsForm compact">
-          <div class="fRow">
-            <label for="firstMonday">First week</label>
-            <input id="firstMonday" type="date" />
-          </div>
-          <div class="fRow">
-            <label for="lastFriday">Last week</label>
-            <input id="lastFriday" type="date" />
-          </div>
+        <div class="fRow">
+          <label for="semesterSel">Semester</label>
+          <select id="semesterSel"><option value="" selected hidden></option>
+            
+            <option value="Fall">Fall</option>
+            <option value="Spring">Spring</option>
+          </select>
+        </div>
+        <div class="fRow">
+          <label for="firstMonday">First week</label>
+          <input id="firstMonday" type="date" />
+        </div>
+        <div class="fRow">
+          <label for="lastFriday">Last week</label>
+          <input id="lastFriday" type="date" />
         </div>
       </div>
 
@@ -248,7 +583,21 @@
           <div class="twoCols" id="periodInputs"></div>
         </div>
 
-        <!-- Gist connect section -->
+        
+      </div>
+      <div class="field" style="margin-top:16px;">
+        <div id="folderToggle" class="collapsibleHead" role="button" tabindex="0" aria-expanded="false" aria-controls="folderChooserWrap">
+          <span class="chev">▶</span>
+          <span>Restrict each period to a Google Drive folder (optional)</span>
+        </div>
+        <div id="folderChooserWrap" style="display:none;">
+          <div id="folderChooserArea" style="margin-top:10px;"></div>
+        </div>
+      </div>
+
+<div class="gistPanel" aria-label="Gist sync">
+        
+
         <div id="gistBlock" class="gistWrap">
           <div class="gistRow compact">
             <label for="gistToken">GitHub Token</label>
@@ -271,15 +620,6 @@
           </div>
         </div>
       </div>
-<div class="field" style="margin-top:16px;">
-        <div id="folderToggle" class="collapsibleHead" role="button" tabindex="0" aria-expanded="false" aria-controls="folderChooserWrap">
-          <span class="chev">▶</span>
-          <span>Restrict each period to a Google Drive folder (optional)</span>
-        </div>
-        <div id="folderChooserWrap" style="display:none;">
-          <div id="folderChooserArea" style="margin-top:10px;"></div>
-        </div>
-      </div>
 
 <footer>
       <div class="row">
@@ -297,8 +637,23 @@
 <script src="https://accounts.google.com/gsi/client" async defer></script>
 
 <script>
+
+// Populate Year dropdown with (current year) and (next year) only.
+function populateYearOptions(){
+  const el = document.getElementById('yearInput');
+  if(!el) return;
+  if(String(el.tagName).toLowerCase()!=='select') return;
+  const now = new Date().getFullYear();
+  const y0 = Math.max(2025, now);
+  const y1 = y0 + 1;
+  const stored = (localStorage.getItem('agenda_year')||'').trim();
+  el.innerHTML='';
+  [y0,y1].forEach(y=>{ const o=document.createElement('option'); o.value=String(y); o.textContent=String(y); el.appendChild(o); });
+  el.value = (stored===String(y1)) ? String(y1) : String(y0);
+}
+
 /* ===== Editing mode ===== */
-const LS_KEY_EDIT = \"agenda_edit_enabled_v1\";
+const LS_KEY_EDIT = "agenda_edit_enabled_v1";
 let editingEnabled = false;
 function updateEditingUI(){
   const pill = document.getElementById("editStatePill");
@@ -1086,7 +1441,7 @@ function renderFolderChoosers(cfg){
     const currentId   = tempFolderIds[i] || cfg.periodFolders[i] || "";
     const currentName = tempFolderNames[i] || cfg.periodFolderNames?.[i] || "";
 
-    const search=document.createElement("input"); search.type="search"; search.className="long half"; search.placeholder="Search Drive folder";
+    const search=document.createElement("input"); search.type="search"; search.className="long half"; search.placeholder="Search folder";
     const findBtn=document.createElement("button"); findBtn.className="btn"; findBtn.textContent="Find folder";
     const clearBtn=document.createElement("button"); clearBtn.className="btn secondary"; clearBtn.textContent="Clear";
 
@@ -1322,9 +1677,42 @@ document.getElementById("authBtn").addEventListener("click", async ()=>{
 });
 document.getElementById("signoutBtn").addEventListener("click", async ()=>{ await signOut(); });
 
+
+// Populate Year dropdown with (current year) and (next year) only.
+function populateYearOptions(){
+  const el = document.getElementById('yearInput');
+  if(!el) return;
+  if(String(el.tagName).toLowerCase() !== 'select') return;
+
+  const now = new Date().getFullYear();
+  const y0 = Math.max(2025, now);
+  const y1 = y0 + 1;
+
+  const stored = (localStorage.getItem('agenda_year') || '').trim();
+  const storedNum = parseInt(stored, 10);
+
+  el.innerHTML = '';
+  [y0, y1].forEach(y => {
+    const opt = document.createElement('option');
+    opt.value = String(y);
+    opt.textContent = String(y);
+    el.appendChild(opt);
+  });
+
+  if(storedNum === y1) el.value = String(y1);
+  else el.value = String(y0);
+
+  el.onchange = () => {
+    localStorage.setItem('agenda_year', String(el.value || ''));
+  };
+}
+
+
 /* ===== Init ===== */
 (async function initOnLoad(){
   try{
+    try{ populateYearOptions(); }catch(_){/*ignore*/}
+
     if(!localStorage.getItem(LS_KEY_CFG)) saveCfg({...NEUTRAL_CFG});
 
     // Always render the agenda even if Google scripts fail to load (common on file://)
@@ -1374,6 +1762,15 @@ document.getElementById("signoutBtn").addEventListener("click", async ()=>{ awai
 
 /* ===== periodic refresh ===== */
 setInterval(()=>{ renderAll(); }, 60*1000);
+
+
+// Ensure Year dropdown options are ready whenever Settings opens
+(function(){
+  const btn = document.getElementById('openSettings');
+  if(btn){ btn.addEventListener('click', () => { try{ populateYearOptions(); }catch(e){} }, {capture:true}); }
+})();
 </script>
 </body>
 </html>
+
+<!-- Regenerated by ChatGPT on 2025-12-18: 0c2204303a21916efa38d8bc303ebc7e -->
