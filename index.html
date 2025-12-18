@@ -53,6 +53,8 @@
   .link{color:var(--link); text-decoration:underline; cursor:pointer}
   .muted{color:#666}
   .dblHint{ font-size:11px; color:#9CA3AF; margin-top:4px; }
+  .confText{font-style:italic; color:#666;}
+
 
   input[type="search"], input[type="text"], select, input[type="number"], input[type="date"]{
     border:1px solid #ccc; border-radius:10px; padding:8px 10px; width:140px; min-width:120px; outline:none; background:#fff;
@@ -755,7 +757,8 @@ function renderWeekTable(cfg, w, links){
 
   (cfg.periods||[]).forEach((periodLabel,idx)=>{
     const td=document.createElement("td");
-    if(!periodLabel){ td.innerHTML=`<div class="muted">Conference</div>`; tr.appendChild(td); return; }
+    const isConf = (!periodLabel) || isConferenceLabel(periodLabel);
+    if(isConf){ td.innerHTML=`<div class="confText">Conference</div>`; tr.appendChild(td); return; }
 
     const saved = linksForWeek[idx];
     const subjectWrap = document.createElement("div");
