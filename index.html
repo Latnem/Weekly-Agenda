@@ -115,13 +115,13 @@
 
   /* Gist section */
   .gistWrap{margin-top:16px; border:1px dashed var(--border); border-radius:12px; padding:12px; background:#fafafa}
-  .gistRow{display:grid; grid-template-columns:140px auto auto; gap:8px; align-items:center; margin:6px 0;}
+  .gistRow{display:grid; grid-template-columns:140px 1fr auto auto auto; gap:8px; align-items:center; margin:6px 0;}
   .gistRow label{text-align:center; font-size:13px;}
   .gistBadge{display:inline-flex; align-items:center; gap:6px; padding:4px 10px; border:1px solid #cbd5e1; border-radius:999px; background:#f1f5f9; font-size:12px}
   #gistToken{ width:220px; }
   #gistId{ width:260px; }
 
-/* Make "Connect Gist" button fit its content width */
+/* Make "Connect" button fit its content width */
 #gistSave{
   justify-self: start;     /* prevent grid stretch */
   width: fit-content;      /* size to its label */
@@ -241,16 +241,22 @@
         <div class="gistRow">
           <label for="gistToken">GitHub Token</label>
           <input id="gistToken" type="text" />
-          <button id="gistSave" class="btn" type="button">Connect Gist</button>
+          <button id="gistSave" class="btn" type="button">Connect</button>
+          <button id="gistSync" class="btn secondary" type="button" title="Sync with Gist">Sync</button>
+          <button id="gistUpdate" class="btn secondary" type="button" title="Force-save this device to Gist">Update</button>
         </div>
         <div class="gistRow">
           <label for="gistId">Gist ID (optional)</label>
           <input id="gistId" type="text" />
           <div></div>
+          <div></div>
+          <div></div>
         </div>
         <div class="gistRow" id="gistStatusRow" style="display:none;">
           <label>Status</label>
           <div class="gistBadge" id="gistStatus">…</div>
+          <div></div>
+          <div></div>
           <div></div>
         </div>
       </div>
@@ -749,10 +755,7 @@ function renderWeekTable(cfg, w, links){
 
   (cfg.periods||[]).forEach((periodLabel,idx)=>{
     const td=document.createElement("td");
-    const rawLabel = (periodLabel || "").trim();
-    const isConference = (!rawLabel) || rawLabel.toLowerCase() === "conference";
-    if(isConference){ td.innerHTML=`<div class="muted">Conference</div>`; tr.appendChild(td); return; }
-    const periodText = rawLabel;
+    if(!periodLabel){ td.innerHTML=`<div class="muted">Conference</div>`; tr.appendChild(td); return; }
 
     const saved = linksForWeek[idx];
     const subjectWrap = document.createElement("div");
@@ -761,10 +764,10 @@ function renderWeekTable(cfg, w, links){
 
     if(saved){
       const href = saved.slideId ? slideLink(saved.id, saved.slideId) : (saved.url || "#");
-      subjectWrap.innerHTML = `<a class="link" href="${href}" target="_blank" rel="noopener">${periodText}</a>`;
+      subjectWrap.innerHTML = `<a class="link" href="${href}" target="_blank" rel="noopener">${periodLabel}</a>`;
       (() => { try { const _a = subjectWrap.querySelector("a"); if(_a){ _a.addEventListener("dblclick", (e)=>{ if(!isEditing()) return; e.preventDefault(); e.stopPropagation(); try { openResults(); } catch(_){} }); } } catch(_){} })();
     } else {
-      subjectWrap.innerHTML = `<span class="muted">${periodText}</span><div class="dblHint">double-click to link</div>`;
+      subjectWrap.innerHTML = `<span class="muted">${periodLabel}</span><div class="dblHint">double-click to link</div>`;
     }
 
     const results = document.createElement("div");
@@ -833,7 +836,7 @@ function renderWeekTable(cfg, w, links){
                   if (GOOGLE.authed) { writeSyncToDrive(buildSyncPayload()).catch(()=>{}); }
                   gistWriteAll().catch(()=>{});
 
-                  subjectWrap.innerHTML = `<a class="link" href="${slideLink(f.id, s.objectId)}" target="_blank" rel="noopener">${periodText}</a>`;
+                  subjectWrap.innerHTML = `<a class="link" href="${slideLink(f.id, s.objectId)}" target="_blank" rel="noopener">${periodLabel}</a>`;
                   (() => { try { const _a = subjectWrap.querySelector("a"); if(_a){ _a.addEventListener("dblclick", (e)=>{ if(!isEditing()) return; e.preventDefault(); e.stopPropagation(); try { openResults(); } catch(_){} }); } } catch(_){} })();
                   closeResults();
                 });
@@ -988,6 +991,8 @@ const gistBlock=document.getElementById("gistBlock");
 const gistTokenInp=document.getElementById("gistToken");
 const gistIdInp=document.getElementById("gistId");
 const gistSaveBtn=document.getElementById("gistSave");
+const gistSyncBtn=document.getElementById("gistSync");
+const gistUpdateBtn=document.getElementById("gistUpdate");
 const gistStatusRow=document.getElementById("gistStatusRow");
 const gistStatus=document.getElementById("gistStatus");
 
@@ -1124,24 +1129,94 @@ resetDefaults.addEventListener("click",()=>{
 });
 
 /* Gist mini-UI */
+function gistLocalHasData(){
+  // Treat as "has data" only if the user has actually saved something locally
+  const hasCfg   = !!localStorage.getItem(LS_KEY_CFG);
+  const hasLinks = !!localStorage.getItem(LS_KEY_LINKS);
+  return hasCfg || hasLinks;
+}
+function gistPayloadHasData(p){
+  return !!(p && (p.cfg || p.linksBySemester) && (Object.keys(p.cfg||{}).length>0 || Object.keys(p.linksBySemester||{}).length>0));
+}
+function setGistStatus(msg){
+  gistStatus.textContent = msg;
+  gistStatusRow.style.display = "grid";
+}
+
+gistSyncBtn.disabled = true;
+gistUpdateBtn.disabled = true;
+
 gistSaveBtn.addEventListener("click", async ()=>{
   const token = (gistTokenInp.value||"").trim();
   const id    = (gistIdInp.value||"").trim();
   if (!token){ alert("Please paste a GitHub token with gist access."); return; }
   gistSaveBtn.disabled = true; gistSaveBtn.textContent = "Connecting…";
+  gistSyncBtn.disabled = true;
+  gistUpdateBtn.disabled = true;
   try{
     const newId = await ensureGist(token, id || null);
     saveGh({ token, gistId: newId });
-    gistStatus.textContent = "Connected";
-    gistStatusRow.style.display="grid";
-    await gistWriteAll();
-    alert("Gist connected and initial sync complete.");
+    setGistStatus("Connected (not synced)");
+    gistSyncBtn.disabled = false;
+      gistUpdateBtn.disabled = false;
+    gistUpdateBtn.disabled = false;
+    alert("Gist connected. Click Sync to pull your saved settings onto this device.");
   }catch(e){
     alert("Failed to connect to Gist: " + (e.message||e));
   }finally{
-    gistSaveBtn.disabled = false; gistSaveBtn.textContent = "Connect Gist";
+    gistSaveBtn.disabled = false; gistSaveBtn.textContent = "Connect";
   }
 });
+
+gistSyncBtn.addEventListener("click", async ()=>{
+  const gh = loadGh();
+  if(!gh.token || !gh.gistId){ alert("Connect first."); return; }
+  gistSyncBtn.disabled = true; gistSyncBtn.textContent = "Syncing…";
+  try{
+    // SAFE SYNC:
+    // 1) Read from Gist first (so we don't wipe it with blanks)
+    const fromGist = await gistReadAll();
+    if (gistPayloadHasData(fromGist)){
+      if (fromGist.cfg) saveCfg(fromGist.cfg);
+      if (fromGist.linksBySemester) localStorage.setItem(LS_KEY_LINKS, JSON.stringify(fromGist.linksBySemester));
+      renderAll();
+      setGistStatus("Synced from Gist");
+      alert("Synced from Gist to this device.");
+    } else {
+      // If Gist has no data, only push *if* this device has real local saves
+      if (gistLocalHasData()){
+        await gistWriteAll();
+        setGistStatus("Pushed local → Gist");
+        alert("Gist was empty, so your local saved settings were pushed to Gist.");
+      } else {
+        setGistStatus("Nothing to sync");
+        alert("Nothing to sync yet (both this device and the Gist are empty).");
+      }
+    }
+  }catch(e){
+    alert("Sync failed: " + (e.message||e));
+  }finally{
+    gistSyncBtn.disabled = false; gistSyncBtn.textContent = "Sync";
+  }
+});
+
+gistUpdateBtn.addEventListener("click", async ()=>{
+  const gh = loadGh();
+  if(!gh.token || !gh.gistId){ alert("Connect first."); return; }
+  if(!confirm("Update will overwrite the Gist with THIS device's current saved data. Continue?")) return;
+  gistUpdateBtn.disabled = true; gistUpdateBtn.textContent = "Updating…";
+  try{
+    const ok = await gistWriteAll();
+    if(ok === false) throw new Error("No token/gist found.");
+    setGistStatus("Updated (pushed to Gist)");
+    alert("Updated Gist from this device.");
+  }catch(e){
+    alert("Failed to update Gist: " + (e.message||e));
+  }finally{
+    gistUpdateBtn.disabled = false; gistUpdateBtn.textContent = "Update";
+  }
+});
+
 
 document.getElementById("saveSettings").addEventListener("click", async ()=>{
   const periods=[]; const inputs=document.querySelectorAll("#periodInputs input[type='text']"); inputs.forEach(inp=>{ periods[+inp.dataset.idx]=(inp.value||"").trim(); });
@@ -1207,14 +1282,16 @@ document.getElementById("signoutBtn").addEventListener("click", async ()=>{ awai
 
     const gh = loadGh();
     if (gh.token && gh.gistId){
-      const fromGist = await gistReadAll();
-      if (fromGist){
-        if (fromGist.cfg) saveCfg(fromGist.cfg);
-        if (fromGist.linksBySemester) localStorage.setItem(LS_KEY_LINKS, JSON.stringify(fromGist.linksBySemester));
-        renderAll();
-      }
+      // Credentials found: show connected UI, but don't auto-pull.
+      // Use the Sync button so we never accidentally overwrite either side.
+      try{
+        gistTokenInp.value = gh.token;
+        gistIdInp.value = gh.gistId;
+      }catch(_){}
+      setGistStatus("Connected (ready to sync)");
+      gistSyncBtn.disabled = false;
     }
-  }catch(e){
+}catch(e){
     const msg = (e && (e.error_description || e.message)) || String(e);
     setAuthUiState({enabled:false, text:"Google failed to load", error: msg});
   }
