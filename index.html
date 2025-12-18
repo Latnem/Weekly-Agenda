@@ -80,8 +80,8 @@
   .modal{ width:min(980px,92vw); background:#fff; border-radius:16px; border:1px solid var(--border); box-shadow:0 10px 30px rgba(0,0,0,.15); }
   .modal header{padding:14px 16px; border-bottom:1px solid var(--border); display:flex; justify-content:space-between; align-items:center}
   .modal h2{margin:0; font-size:18px}
-  .modal .body{padding:12px 14px; overflow:auto}
-  .modal{max-height:min(86vh,760px); display:flex; flex-direction:column}
+  .modal .body{padding:10px 12px; overflow:auto}
+  .modal{max-height:94vh; display:flex; flex-direction:column}
   .modal header{padding:10px 14px; position:sticky; top:0; background:#fff; z-index:1}
   .modal h2{font-size:16px}
   .modal .body .section{margin-top:10px}
@@ -352,6 +352,11 @@ const dayMs = 24*60*60*1000;
 function toDateAtMidnight(s){ if(!s) return null; const [y,m,d]=s.split("-").map(Number); return new Date(y,m-1,d,0,0,0,0); }
 function addDays(date,n){ const d=new Date(date); d.setDate(d.getDate()+n); return d; }
 function overlaps(aStart,aEnd,bStart,bEnd){ return !(aEnd < bStart || aStart > bEnd); }
+
+// Treat 'Conference' as a reserved plain-text label (case-insensitive)
+function isConferenceLabel(label){
+  return (label ?? "").toString().trim().toLowerCase() === "conference";
+}
 function mondayOf(d){ const nd=new Date(d); const w=(nd.getDay()+6)%7; nd.setDate(nd.getDate()-w); nd.setHours(0,0,0,0); return nd; }
 function fmtMonthLong(d){ return d.toLocaleDateString(undefined,{month:"long"}); }
 function fmtDay(d){ return d.getDate(); }
