@@ -125,8 +125,18 @@
   .scopeTag{font-size:12px;color:#6b7280}
 
   /* Gist section */
-  .gistWrap{margin-top:16px; border:1px dashed var(--border); border-radius:12px; padding:12px; background:#fafafa}
-  .gistRow{display:grid; grid-template-columns:140px 1fr auto auto auto; gap:8px; align-items:center; margin:6px 0;}
+  .gistWrap{margin-top:0;  border:1px dashed var(--border); border-radius:12px; padding:12px; background:#fafafa}
+  .gistRow{display:grid; gap:8px; align-items:center; margin:6px 0;}
+.gistRow.compact{grid-template-columns:120px 1fr;}
+.gistBtns{display:grid; gap:8px; grid-auto-rows:min-content; margin-top:8px;}
+.gistBtns .btn{width:100%;}
+.periodAndGist{display:flex; gap:12px; align-items:flex-start;}
+.periodAndGist .periodNames{flex:1;}
+.periodAndGist #gistBlock{flex:0 0 320px; max-width:320px;}
+@media (max-width: 900px){
+  .periodAndGist{flex-direction:column;}
+  .periodAndGist #gistBlock{max-width:unset; width:100%; flex:unset;}
+} .periodAndGist #gistBlock{max-width:unset; width:100%; flex:unset;} }
   .gistRow label{text-align:center; font-size:13px;}
   .gistBadge{display:inline-flex; align-items:center; gap:6px; padding:4px 10px; border:1px solid #cbd5e1; border-radius:999px; background:#f1f5f9; font-size:12px}
   #gistToken{ width:220px; }
@@ -232,12 +242,36 @@
         </div>
       </div>
 
-      <div class="field periodNames" style="margin-top:16px;">
-        <label>Label each period (leave blank for conference)</label>
-        <div class="twoCols" id="periodInputs"></div>
-      </div>
+      <div class="periodAndGist" style="margin-top:16px;">
+        <div class="field periodNames" style="margin-top:0;">
+          <label>Label each period (leave blank for conference)</label>
+          <div class="twoCols" id="periodInputs"></div>
+        </div>
 
-      <div class="field" style="margin-top:16px;">
+        <!-- Gist connect section -->
+        <div id="gistBlock" class="gistWrap">
+          <div class="gistRow compact">
+            <label for="gistToken">GitHub Token</label>
+            <input id="gistToken" type="text" />
+          </div>
+          <div class="gistRow compact">
+            <label for="gistId">Gist ID (optional)</label>
+            <input id="gistId" type="text" />
+          </div>
+
+          <div class="gistBtns">
+            <button id="gistSave" class="btn" type="button">Connect</button>
+            <button id="gistSync" class="btn secondary" type="button" title="Sync with Gist">Sync</button>
+            <button id="gistUpdate" class="btn secondary" type="button" title="Force-save this device to Gist">Update</button>
+          </div>
+
+          <div class="gistRow compact" id="gistStatusRow" style="display:none; margin-top:10px;">
+            <label>Status</label>
+            <div class="gistBadge" id="gistStatus">…</div>
+          </div>
+        </div>
+      </div>
+<div class="field" style="margin-top:16px;">
         <div id="folderToggle" class="collapsibleHead" role="button" tabindex="0" aria-expanded="false" aria-controls="folderChooserWrap">
           <span class="chev">▶</span>
           <span>Restrict each period to a Google Drive folder (optional)</span>
@@ -246,17 +280,7 @@
           <div id="folderChooserArea" style="margin-top:10px;"></div>
         </div>
       </div>
-
-      <!-- Gist connect section (always visible) -->
-      <div id="gistBlock" class="gistWrap">
-        <div class="gistRow">
-          <label for="gistToken">GitHub Token</label>
-          <input id="gistToken" type="text" />
-          <button id="gistSave" class="btn" type="button">Connect</button>
-          <button id="gistSync" class="btn secondary" type="button" title="Sync with Gist">Sync</button>
-          <button id="gistUpdate" class="btn secondary" type="button" title="Force-save this device to Gist">Update</button>
-        </div>
-        <div class="gistRow">
+<div class="gistRow">
           <label for="gistId">Gist ID (optional)</label>
           <input id="gistId" type="text" />
           <div></div>
@@ -308,8 +332,37 @@ function isEditing(){ return !!editingEnabled; }
 function attachEditToggle(){
   const btn = document.getElementById("toggleEdit");
   if (!btn) return;
-  btn.addEventListener("click", ()=>{ editingEnabled = !editingEnabled; updateEditingUI(); });
-  updateEditingUI();
+
+  // Restore last state
+  try{ editingEnabled = (localStorage.getItem(LS_KEY_EDIT) === "1"); }catch(_){}
+
+  const apply = ()=>{
+    try{ btn.setAttribute("aria-pressed", editingEnabled ? "true" : "false"); }catch(_){}
+    updateEditingUI();
+    // force any existing tables to reflect current editing rules
+    try{ renderAll(); }catch(_){}
+  };
+
+  btn.type = "button";
+  btn.addEventListener("click", (ev)=>{
+    ev.preventDefault();
+    editingEnabled = !editingEnabled;
+    try{ localStorage.setItem(LS_KEY_EDIT, editingEnabled ? "1" : "0"); }catch(_){}
+    apply();
+  });
+
+  // Clicking the pill also toggles (small UX helper)
+  const pill = document.getElementById("editStatePill");
+  if (pill){
+    pill.style.cursor = "pointer";
+    pill.addEventListener("click", ()=>{
+      editingEnabled = !editingEnabled;
+      try{ localStorage.setItem(LS_KEY_EDIT, editingEnabled ? "1" : "0"); }catch(_){}
+      apply();
+    });
+  }
+
+  apply();
 }
 
 /* ===== Google config ===== */
@@ -332,6 +385,7 @@ const LS_KEY_LINKS   = "agenda_links_by_semester";
 const LS_KEY_CFG     = "agenda_master_template_neutral_v1";
 const LS_KEY_GH      = "agenda_github_sync_v1"; // {token, gistId}
 const LS_KEY_AUTH    = "agenda_auth_meta_v1";
+const LS_KEY_EDIT    = "agenda_editing_enabled_v1";
 
 /* ===== Neutral defaults ===== */
 const NEUTRAL_CFG = {
