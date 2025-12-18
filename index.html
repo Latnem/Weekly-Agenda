@@ -1285,6 +1285,10 @@ document.getElementById("signoutBtn").addEventListener("click", async ()=>{ awai
   try{
     if(!localStorage.getItem(LS_KEY_CFG)) saveCfg({...NEUTRAL_CFG});
 
+    // Always render the agenda even if Google scripts fail to load (common on file://)
+    try{ attachEditToggle(); }catch(_){/*ignore*/}
+    try{ renderAll(); }catch(_){/*ignore*/}
+
     await loadGapiClient();
     await loadGis();
     await initAuth();
@@ -1320,6 +1324,9 @@ document.getElementById("signoutBtn").addEventListener("click", async ()=>{ awai
 }catch(e){
     const msg = (e && (e.error_description || e.message)) || String(e);
     setAuthUiState({enabled:false, text:"Google failed to load", error: msg});
+    // Still show the agenda offline / without Google
+    try{ attachEditToggle(); }catch(_){/*ignore*/}
+    try{ renderAll(); }catch(_){/*ignore*/}
   }
 })();
 
