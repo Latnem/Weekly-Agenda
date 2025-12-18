@@ -127,12 +127,12 @@
   /* Gist section */
   .gistWrap{margin-top:0;  border:1px dashed var(--border); border-radius:12px; padding:12px; background:#fafafa}
   .gistRow{display:grid; gap:8px; align-items:center; margin:6px 0;}
-.gistRow.compact{grid-template-columns:120px 1fr;}
-.gistBtns{display:grid; gap:8px; grid-auto-rows:min-content; margin-top:8px;}
-.gistBtns .btn{width:100%;}
+.gistRow.compact{grid-template-columns:105px 1fr;}
+.gistBtns{display:flex; flex-direction:column; align-items:flex-start; gap:8px; margin-top:8px;}
+.gistBtns .btn{width:auto;}
 .periodAndGist{display:flex; gap:12px; align-items:flex-start;}
 .periodAndGist .periodNames{flex:1;}
-.periodAndGist #gistBlock{flex:0 0 320px; max-width:320px;}
+.periodAndGist #gistBlock{flex:0 0 260px; max-width:320px;}
 @media (max-width: 900px){
   .periodAndGist{flex-direction:column;}
   .periodAndGist #gistBlock{max-width:unset; width:100%; flex:unset;}
@@ -140,7 +140,7 @@
   .gistRow label{text-align:center; font-size:13px;}
   .gistBadge{display:inline-flex; align-items:center; gap:6px; padding:4px 10px; border:1px solid #cbd5e1; border-radius:999px; background:#f1f5f9; font-size:12px}
   #gistToken{ width:220px; }
-  #gistId{ width:260px; }
+  #gistId{width:100%;}
 
 /* Make "Connect" button fit its content width */
 #gistSave{
@@ -280,24 +280,8 @@
           <div id="folderChooserArea" style="margin-top:10px;"></div>
         </div>
       </div>
-<div class="gistRow">
-          <label for="gistId">Gist ID (optional)</label>
-          <input id="gistId" type="text" />
-          <div></div>
-          <div></div>
-          <div></div>
-        </div>
-        <div class="gistRow" id="gistStatusRow" style="display:none;">
-          <label>Status</label>
-          <div class="gistBadge" id="gistStatus">…</div>
-          <div></div>
-          <div></div>
-          <div></div>
-        </div>
-      </div>
-    </div>
 
-    <footer>
+<footer>
       <div class="row">
         <button id="resetDefaults" class="btn secondary">Reset to Default</button>
       </div>
@@ -314,6 +298,7 @@
 
 <script>
 /* ===== Editing mode ===== */
+const LS_KEY_EDIT = \"agenda_edit_enabled_v1\";
 let editingEnabled = false;
 function updateEditingUI(){
   const pill = document.getElementById("editStatePill");
@@ -385,8 +370,6 @@ const LS_KEY_LINKS   = "agenda_links_by_semester";
 const LS_KEY_CFG     = "agenda_master_template_neutral_v1";
 const LS_KEY_GH      = "agenda_github_sync_v1"; // {token, gistId}
 const LS_KEY_AUTH    = "agenda_auth_meta_v1";
-const LS_KEY_EDIT    = "agenda_editing_enabled_v1";
-
 /* ===== Neutral defaults ===== */
 const NEUTRAL_CFG = {
   semester:"", year:"",
