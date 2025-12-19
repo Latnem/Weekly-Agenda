@@ -1688,7 +1688,7 @@ function populateYearOptions(){
 
 
 /* ===== Init ===== */
-(async async function initOnLoad(){
+async function initOnLoad(){
   try{
     try{ populateYearOptions(); }catch(_){/*ignore*/}
 
@@ -1737,7 +1737,7 @@ function populateYearOptions(){
     try{ attachEditToggle(); }catch(_){/*ignore*/}
     try{ renderAll(); }catch(_){/*ignore*/}
   }
-})();
+}
 
 /* ===== periodic refresh ===== */
 setInterval(()=>{ renderAll(); }, 60*1000);
