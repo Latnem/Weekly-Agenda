@@ -2026,5 +2026,41 @@ window.addEventListener('load', () => { try{ initOnLoad(); }catch(e){ console.er
 })();
 </script>
 
+
+<script>
+/* === Re-link fix (v2) ===
+   When Editing is enabled, prevent <a> navigation so double-click can open the picker again. */
+(function(){
+  function editingOn(){
+    try{ return (typeof isEditing === 'function') ? !!isEditing() : !!window.editingEnabled; }catch(_){ return false; }
+  }
+
+  // Block normal navigation while editing (capture phase)
+  document.addEventListener('click', function(ev){
+    const a = ev.target && ev.target.closest ? ev.target.closest('.subjectLink a.link') : null;
+    if(!a) return;
+    if(!editingOn()) return;
+    ev.preventDefault();
+    ev.stopPropagation();
+  }, true);
+
+  // Ensure double-click on the link triggers the subject wrapper's dblclick handler
+  document.addEventListener('dblclick', function(ev){
+    const a = ev.target && ev.target.closest ? ev.target.closest('.subjectLink a.link') : null;
+    if(!a) return;
+    if(!editingOn()) return;
+    ev.preventDefault();
+    ev.stopPropagation();
+    const wrap = a.closest('.subjectLink');
+    if(wrap){
+      try{
+        const evt = new MouseEvent('dblclick', { bubbles:true, cancelable:true, view:window });
+        wrap.dispatchEvent(evt);
+      }catch(_){}
+    }
+  }, true);
+})();
+</script>
+
 </body>
 </html>
