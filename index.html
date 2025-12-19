@@ -6,7 +6,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>Weekly Agendas — Drive AppData + Optional Gist Backup</title>
 <style>
-  :root{ --ink:#111; --muted:#666; --link:#2166c2; --ring:#1697BB; --bg:#fff; --border:#e5e7eb; }
+  :root{ --ink:#111; --muted:#666; --link:#2166c2; --ring:#1697BB; --bg:#fff; --border:#CECFD3; }
   html,body{font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial; color:var(--ink); background:#fff; margin:0}
   .wrap{max-width:1100px;margin:32px auto;padding:0 16px; position:relative}
 
@@ -22,7 +22,7 @@
   #editStatePill{position:relative; top:0; right:0}
   .pill{font-size:12px; border:1px solid #ddd; padding:2px 8px; border-radius:999px; color:#333; background:#fafafa}
   #editStatePill.enabled  { background:#e8f8ed; color:#0f5c26; border-color:#0a7e2a33; }
-  #editStatePill.disabled { background:#f3f4f6; color:#374151; border-color:#e5e7eb; }
+  #editStatePill.disabled { background:#e5e7eb; color:#374151; border-color:#e5e7eb; }
 
   .toolbar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:6px 0 18px}
   .btn{border:1px solid var(--ring); color:#084b5a; padding:8px 12px; border-radius:10px; background:#e9f6fb; cursor:pointer; font-weight:600; margin:4px}
@@ -72,7 +72,7 @@
   .slidesList{border-top:1px solid #eee; margin-top:8px; padding-top:8px}
   .slideRow{display:grid; grid-template-columns: 140px 1fr auto; align-items:center; gap:12px; padding:8px 0; border-top:1px dashed #eee}
   .slideRow:first-child{border-top:none}
-  .thumb{ width:140px; height:79px; border:1px solid #e5e7eb; border-radius:8px; object-fit:cover; background:#f3f4f6; }
+  .thumb{ width:140px; height:79px; border:1px solid #CECFD3; border-radius:8px; object-fit:cover; background:#CECFD3; }
   .thumb.skel{ animation: pulse 1.2s ease-in-out infinite; filter: saturate(.2) blur(.2px); }
   @keyframes pulse { 0%{opacity:.65} 50%{opacity:1} 100%{opacity:.65} }
 
@@ -516,6 +516,15 @@ input[type="date"]{
 <style>
 /* Keep top toolbar clickable */
 .topBar{ position: sticky; top: 0; z-index: 10; }
+</style>
+
+
+
+<style>
+/* Header row (Semester Year | times | Notes:) background for all weeks */
+table.grid thead tr{
+  background: #cecfd3;
+}
 </style>
 
 </head>
