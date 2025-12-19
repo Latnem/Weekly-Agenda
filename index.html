@@ -1832,5 +1832,73 @@ window.addEventListener('load', () => { try{ initOnLoad(); }catch(e){ console.er
 })();
 
 </script>
+
+<script>
+/* === Robust Editing Toggle Patch ===
+   Ensures the Edit button always toggles editingEnabled, even if earlier init logic fails. */
+(function(){
+  function bind(){
+    const btn = document.getElementById('toggleEdit');
+    const pill = document.getElementById('editStatePill');
+    if(!btn) return;
+
+    // ensure button doesn't submit any form
+    try{ btn.type = 'button'; }catch(_){}
+
+    // state key must match app's LS_KEY_EDIT if present; fallback to 'weeklyAgenda_editing'
+    const KEY = (window.LS_KEY_EDIT || 'weeklyAgenda_editing');
+
+    function setPill(on){
+      if(!pill) return;
+      pill.textContent = on ? 'Editing enabled' : 'Editing disabled';
+      pill.classList.toggle('enabled', !!on);
+      pill.classList.toggle('disabled', !on);
+    }
+
+    function getState(){
+      try{
+        const v = localStorage.getItem(KEY);
+        return v === '1' || v === 'true';
+      }catch(_){ return false; }
+    }
+
+    function setState(on){
+      try{ localStorage.setItem(KEY, on ? '1' : '0'); }catch(_){}
+      // keep app globals in sync if they exist
+      try{ window.editingEnabled = !!on; }catch(_){}
+      try{ btn.setAttribute('aria-pressed', on ? 'true' : 'false'); }catch(_){}
+      setPill(on);
+    }
+
+    // Initialize from storage
+    setState(getState());
+
+    // Avoid duplicate binding
+    if(btn.__editBound) return;
+    btn.__editBound = true;
+
+    btn.addEventListener('click', function(ev){
+      ev.preventDefault();
+      const next = !getState();
+      setState(next);
+      try{ if (typeof window.renderAll === 'function') window.renderAll(); }catch(_){}
+    }, true);
+
+    if(pill && !pill.__editBound){
+      pill.__editBound = true;
+      pill.style.cursor = 'pointer';
+      pill.addEventListener('click', function(){
+        const next = !getState();
+        setState(next);
+        try{ if (typeof window.renderAll === 'function') window.renderAll(); }catch(_){}
+      }, true);
+    }
+  }
+
+  window.addEventListener('load', bind);
+  document.addEventListener('DOMContentLoaded', bind);
+})();
+</script>
+
 </body>
 </html>
