@@ -537,6 +537,20 @@ table thead tr.weekHeader,
 }
 </style>
 
+
+<style>
+/* Simple red X clear button */
+.clearX{
+  color:#b91c1c;
+  font-weight:600;
+  padding:4px 8px;
+  min-width:auto;
+}
+.clearX:hover{
+  background:#fee2e2;
+}
+</style>
+
 </head>
 <body>
 <div class="wrap">
@@ -1329,9 +1343,16 @@ function renderWeekTable(cfg, w, links){
         const qInput = document.createElement("input");
         qInput.type = "search";
         qInput.placeholder = folderId ? "Search this folder…" : "Type to search Drive…"; // no prefill
-        const scope = document.createElement("span"); scope.className="scopeTag"; scope.textContent = scopeText;
         const btnGo = document.createElement("button"); btnGo.className="btn"; btnGo.textContent = "Search";
-        bar.appendChild(qInput); bar.appendChild(btnGo); bar.appendChild(scope);
+        const btnClear = document.createElement("button"); btnClear.className="btn ghost clearX"; btnClear.textContent = "✕"; btnClear.title = "Clear link";
+        // Enable Clear only if this period currently has a saved link
+        try{
+          const _all = loadLinksFor(cfg);
+          const _has = !!(_all && _all[w.n] && _all[w.n][idx]);
+          btnClear.disabled = !_has;
+        }catch(_){ btnClear.disabled = true; }
+
+        bar.appendChild(qInput); bar.appendChild(btnGo); bar.appendChild(btnClear);
         results.appendChild(bar);
 
         async function runSearch(){
@@ -1340,6 +1361,27 @@ function renderWeekTable(cfg, w, links){
           renderFileRows(files);
         }
         btnGo.addEventListener("click", (ev)=>{ ev.stopPropagation(); runSearch(); });
+
+        btnClear.addEventListener("click", (ev)=>{
+          ev.preventDefault(); ev.stopPropagation();
+          try{
+            const all = loadLinksFor(cfg);
+            all[w.n] = all[w.n] || {};
+            if (all[w.n][idx]) delete all[w.n][idx];
+            saveLinksFor(cfg, all);
+
+            // Update UI back to "double-click to link"
+            subjectWrap.innerHTML = `<span class="muted">${periodLabel}</span><div class="dblHint">double-click to link</div>`;
+
+            // Close picker
+            results.innerHTML = "";
+            if (typeof closePicker === "function") closePicker();
+
+            if (GOOGLE.authed) { writeSyncToDrive(buildSyncPayload()).catch(()=>{}); }
+            gistWriteAll().catch(()=>{});
+          }catch(_){}
+        });
+
         qInput.addEventListener("keydown", (ev)=>{ if(ev.key==="Enter"){ ev.preventDefault(); ev.stopPropagation(); runSearch(); } });
 
         if (folderId){
@@ -2060,6 +2102,15 @@ window.addEventListener('load', () => { try{ initOnLoad(); }catch(e){ console.er
     }
   }, true);
 })();
+</script>
+
+
+<script>
+/* Helper: close the slide picker overlay if present */
+function closePicker(){
+  const dlg = document.getElementById('drivePicker');
+  if(dlg) dlg.remove();
+}
 </script>
 
 </body>
