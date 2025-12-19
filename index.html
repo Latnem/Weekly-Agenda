@@ -467,6 +467,57 @@ input[type="date"]{
 }
 </style>
 
+
+<style>
+/* === Critical fix: modal backdrop CSS was corrupted and was blocking all clicks === */
+.modalBackdrop{
+  position: fixed !important;
+  inset: 0 !important;
+  background: rgba(0,0,0,.30) !important;
+  display: none !important;              /* MUST be hidden when closed */
+  align-items: center !important;
+  justify-content: center !important;
+  z-index: 50 !important;
+}
+/* When JS opens the modal it sets style.display='flex' */
+#settingsModal[style*="display: flex"]{ display:flex !important; }
+
+/* Keep Gist buttons right-aligned */
+.gistBtns{
+  display:flex !important;
+  width:100% !important;
+  justify-content:flex-end !important;
+  gap:8px !important;
+}
+</style>
+
+
+<style>
+/* Clean modal backdrop (class-based) */
+.modalBackdrop{
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,.30);
+  display: none;           /* hidden unless .show */
+  align-items: center;
+  justify-content: center;
+  z-index: 50;
+}
+.modalBackdrop.show{ display: flex; }
+
+.modalBackdrop .modal{
+  background: #fff;
+  border-radius: 14px;
+  box-shadow: 0 18px 60px rgba(0,0,0,.25);
+}
+</style>
+
+
+<style>
+/* Keep top toolbar clickable */
+.topBar{ position: sticky; top: 0; z-index: 10; }
+</style>
+
 </head>
 <body>
 <div class="wrap">
@@ -528,12 +579,12 @@ input[type="date"]{
       <div class="topCols">
         <div class="fRow">
           <label for="yearInput">Year</label>
-          <select id="yearInput"></select>
+          <select id="yearInput"><option value="" selected hidden></option></select>
         </div>
         <div class="fRow">
           <label for="semesterSel">Semester</label>
-          <select id="semesterSel">
-            <option value="">— Select —</option>
+          <select id="semesterSel"><option value="" selected hidden></option>
+            
             <option value="Fall">Fall</option>
             <option value="Spring">Spring</option>
           </select>
@@ -1751,6 +1802,35 @@ setInterval(()=>{ renderAll(); }, 60*1000);
 
 // Boot
 window.addEventListener('load', () => { try{ initOnLoad(); }catch(e){ console.error(e);} });
+
+
+// --- PATCH: ensure settings modal doesn't block clicks and opens reliably ---
+(function(){
+  const modal = document.getElementById('settingsModal');
+  const openBtn = document.getElementById('openSettings');
+  const closeBtn = document.getElementById('closeSettings');
+  if(!modal || !openBtn) return;
+
+  function openSettings(){
+    modal.classList.add('show');
+    modal.style.display = 'flex';
+  }
+  function closeSettings(){
+    modal.classList.remove('show');
+    modal.style.display = 'none';
+  }
+
+  // Rebind (capture) so even if earlier listeners exist, this will run
+  openBtn.addEventListener('click', (e)=>{ e.preventDefault(); openSettings(); }, true);
+  if(closeBtn) closeBtn.addEventListener('click', (e)=>{ e.preventDefault(); closeSettings(); }, true);
+
+  // Close on backdrop click
+  modal.addEventListener('click', (e)=>{ if(e.target===modal) closeSettings(); }, true);
+
+  // Make sure closed on load
+  closeSettings();
+})();
+
 </script>
 </body>
 </html>
