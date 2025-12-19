@@ -539,15 +539,19 @@ table thead tr.weekHeader,
 
 
 <style>
-/* Simple red X clear button */
+/* Clear X – Style 8 (button-style with border) */
 .clearX{
+  width:28px; height:28px; padding:0;
+  border-radius:10px;
+  background:#fff;
+  border:1px solid #e5e7eb;
   color:#b91c1c;
-  font-weight:600;
-  padding:4px 8px;
-  min-width:auto;
+  font-weight:800;
+  box-shadow:0 1px 0 rgba(0,0,0,.03);
 }
 .clearX:hover{
   background:#fee2e2;
+  border-color:#fecaca;
 }
 </style>
 
@@ -2111,6 +2115,69 @@ function closePicker(){
   const dlg = document.getElementById('drivePicker');
   if(dlg) dlg.remove();
 }
+</script>
+
+
+<script>
+/* Persist GitHub Token & Gist ID */
+(function(){
+  const KEY_TOKEN = 'agenda_github_token';
+  const KEY_GIST  = 'agenda_gist_id';
+
+  function byId(id){ return document.getElementById(id); }
+
+  function restore(){
+    const tokenEl = byId('githubToken');
+    const gistEl  = byId('gistId');
+    if(tokenEl){
+      const v = localStorage.getItem(KEY_TOKEN);
+      if(v) tokenEl.value = v;
+    }
+    if(gistEl){
+      const v = localStorage.getItem(KEY_GIST);
+      if(v) gistEl.value = v;
+    }
+  }
+
+  function bind(){
+    const tokenEl = byId('githubToken');
+    const gistEl  = byId('gistId');
+    if(tokenEl){
+      tokenEl.addEventListener('input', ()=> {
+        try{ localStorage.setItem(KEY_TOKEN, tokenEl.value || ''); }catch(_){}
+      });
+    }
+    if(gistEl){
+      gistEl.addEventListener('input', ()=> {
+        try{ localStorage.setItem(KEY_GIST, gistEl.value || ''); }catch(_){}
+      });
+    }
+  }
+
+  window.addEventListener('DOMContentLoaded', ()=>{ restore(); bind(); });
+})();
+</script>
+
+
+<script>
+/* Mask / Reveal GitHub Token */
+(function(){
+  const input = document.getElementById('githubToken');
+  if(!input) return;
+
+  const btn = document.createElement('button');
+  btn.type = 'button';
+  btn.textContent = '👁';
+  btn.title = 'Show / hide token';
+  btn.style.marginLeft = '6px';
+  btn.style.cursor = 'pointer';
+
+  input.after(btn);
+
+  btn.addEventListener('click', ()=>{
+    input.type = (input.type === 'password') ? 'text' : 'password';
+  });
+})();
 </script>
 
 </body>
