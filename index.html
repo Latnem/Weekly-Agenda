@@ -1900,5 +1900,58 @@ window.addEventListener('load', () => { try{ initOnLoad(); }catch(e){ console.er
 })();
 </script>
 
+
+<script>
+/* === Delegated Edit Toggle Patch (v4) ===
+   Fixes cases where the toolbar is re-rendered and the Edit button loses its listener.
+   Uses event delegation so clicks always toggle editing. */
+(function(){
+  const KEY = 'agenda_edit_enabled_v1';
+
+  function read(){
+    try{ return localStorage.getItem(KEY)==='1'; }catch(_){ return false; }
+  }
+  function write(v){
+    try{ localStorage.setItem(KEY, v?'1':'0'); }catch(_){}
+    try{ window.editingEnabled = !!v; }catch(_){}
+  }
+  function syncUI(v){
+    const pill = document.getElementById('editStatePill');
+    if (pill){
+      pill.textContent = v ? 'Editing enabled' : 'Editing disabled';
+      pill.classList.toggle('enabled', !!v);
+      pill.classList.toggle('disabled', !v);
+    }
+    const btn = document.getElementById('toggleEdit');
+    if (btn){
+      btn.setAttribute('aria-pressed', v ? 'true' : 'false');
+    }
+  }
+
+  // Initialize UI from storage on load
+  function init(){
+    const v = read();
+    write(v);
+    syncUI(v);
+  }
+
+  document.addEventListener('click', function(ev){
+    const hit = ev.target && ev.target.closest ? ev.target.closest('#toggleEdit, #editStatePill') : null;
+    if(!hit) return;
+
+    ev.preventDefault();
+    ev.stopPropagation();
+
+    const next = !read();
+    write(next);
+    syncUI(next);
+    try{ if (typeof window.renderAll === 'function') window.renderAll(); }catch(_){}
+  }, true);
+
+  window.addEventListener('load', init);
+  document.addEventListener('DOMContentLoaded', init);
+})();
+</script>
+
 </body>
 </html>
