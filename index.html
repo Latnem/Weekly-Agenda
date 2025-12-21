@@ -17,7 +17,7 @@
   }
   .actions{display:flex; flex-direction:column; align-items:flex-end; gap:8px; position:relative}
   .actions .topRow{display:flex; align-items:center; gap:8px;}
-  .iconBtn{border:1px solid var(--border); background:#fff; border-radius:10px; padding:8px 10px; cursor:pointer; display:inline-flex; align-items:center; gap:8px;}
+  .iconBtn{border:1px solid var(--border); background:#fff; border-radius:10px; padding:8px 10px;  display:inline-flex; align-items:center; gap:8px;}
   .iconBtn svg{width:18px;height:18px}
   #editStatePill{position:relative; top:0; right:0}
   .pill{font-size:12px; border:1px solid #ddd; padding:2px 8px; border-radius:999px; color:#333; background:#fafafa}
@@ -25,7 +25,7 @@
   #editStatePill.disabled { background:#e5e7eb; color:#374151; border-color:#e5e7eb; }
 
   .toolbar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:6px 0 18px}
-  .btn{border:1px solid var(--ring); color:#084b5a; padding:8px 12px; border-radius:10px; background:#e9f6fb; cursor:pointer; font-weight:600; margin:4px}
+  .btn{border:1px solid var(--ring); color:#084b5a; padding:8px 12px; border-radius:10px; background:#e9f6fb;  font-weight:600; margin:4px}
   .btn.secondary{border-color:#ddd;background:#fafafa;color:#222}
   .btn:disabled{opacity:.55; cursor:not-allowed}
   .err{color:#b91c1c}
@@ -50,7 +50,7 @@
   .badge--upcoming{ border-color:#1d4ed833; background:#e6f0ff; color:#1d4ed8; }
   .badge--past{     border-color:#b91c1c33; background:#ffecec; color:#b91c1c; }
 
-  .link{color:var(--link); text-decoration:underline; cursor:pointer}
+  .link{color:var(--link); text-decoration:underline; }
   .muted{color:#666}
   .dblHint{ font-size:11px; color:#9CA3AF; margin-top:4px; }
   .confText{font-style:italic; color:#666;}
@@ -68,7 +68,7 @@
   .resultItem:first-child{border-top:none}
   .slideTitle{font-size:13px; color:#333}
   .slideMeta{font-size:12px; color:#777}
-  .choose{padding:8px 12px; border-radius:8px; border:1px solid #cbd5e1; background:#fff; cursor:pointer; margin:4px}
+  .choose{padding:8px 12px; border-radius:8px; border:1px solid #cbd5e1; background:#fff;  margin:4px}
   .slidesList{border-top:1px solid #eee; margin-top:8px; padding-top:8px}
   .slideRow{display:grid; grid-template-columns: 140px 1fr auto; align-items:center; gap:12px; padding:8px 0; border-top:1px dashed #eee}
   .slideRow:first-child{border-top:none}
@@ -76,7 +76,7 @@
   .thumb.skel{ animation: pulse 1.2s ease-in-out infinite; filter: saturate(.2) blur(.2px); }
   @keyframes pulse { 0%{opacity:.65} 50%{opacity:1} 100%{opacity:.65} }
 
-  .modalBackdrop{position:fixed; inset:0; background:rgba(0,0,0,.35); display:none; align-items:center; justify-content:center; z-index:50;}
+  .modalBackdrop{position:fixed; inset:0; background:rgba(0,0,0,.35); display:block; align-items:center; justify-content:center; z-index:50;}
   .modal{ width:min(980px,92vw); background:#fff; border-radius:16px; border:1px solid var(--border); box-shadow:0 10px 30px rgba(0,0,0,.15); }
   .modal header{padding:14px 16px; border-bottom:1px solid var(--border); display:flex; justify-content:space-between; align-items:center}
   .modal h2{margin:0; font-size:18px}
@@ -105,7 +105,7 @@
   .pRow{display:grid; grid-template-columns:100px 1fr; align-items:center; gap:6px;}
   .pRow label{font-size:13px; color:#333; white-space:nowrap; text-align:center;}
 
-  .collapsibleHead{display:inline-flex; align-items:center; gap:8px; cursor:pointer; user-select:none; padding:8px 10px; border:1px solid var(--border); border-radius:10px; background:#fafafa; margin-top:16px; width:fit-content; max-width:min(520px, 92%);}
+  .collapsibleHead{display:inline-flex; align-items:center; gap:8px;  user-select:none; padding:8px 10px; border:1px solid var(--border); border-radius:10px; background:#fafafa; margin-top:16px; width:fit-content; max-width:min(520px, 92%);}
   .chev{transition: transform .18s ease; width:14px; height:14px; display:inline-block}
   .collapsibleHead[aria-expanded="true"] .chev{ transform: rotate(90deg); }
 
@@ -441,12 +441,12 @@ input[type="date"]{
   position: fixed;
   inset: 0;
   background: rgba(0,0,0,.30);
-  display: none;              /* critical: do not block clicks when closed */
+  display:block;              /* critical: do not block clicks when closed */
   align-items: center;
   justify-content: center;
   z-index: 50;
 }
-#settingsModal{ display:none; } /* ensure closed by default even if other CSS is broken */
+#settingsModal{ display:block; } /* ensure closed by default even if other CSS is broken */
 
 .modalBackdrop .modal{
   background: #fff;
@@ -474,7 +474,7 @@ input[type="date"]{
   position: fixed !important;
   inset: 0 !important;
   background: rgba(0,0,0,.30) !important;
-  display: none !important;              /* MUST be hidden when closed */
+  display:block;!important;              /* MUST be hidden when closed */
   align-items: center !important;
   justify-content: center !important;
   z-index: 50 !important;
@@ -498,7 +498,7 @@ input[type="date"]{
   position: fixed;
   inset: 0;
   background: rgba(0,0,0,.30);
-  display: none;           /* hidden unless .show */
+  display:block;           /* hidden unless .show */
   align-items: center;
   justify-content: center;
   z-index: 50;
@@ -555,6 +555,142 @@ table thead tr.weekHeader,
 }
 </style>
 
+
+<style>
+/* === Settings modal Option 3: Left nav + right content (cozy) === */
+#settingsModal .modal{ width:min(760px, 94vw); max-height:88vh; }
+#settingsModal .body{ padding:12px 14px; }
+#settingsModal .settingsSplit{
+  display:grid;
+  grid-template-columns: 160px 1fr;
+  gap:12px;
+  align-items:start;
+}
+#settingsModal .settingsNav{
+  display:flex;
+  flex-direction:column;
+  gap:8px;
+  padding:10px;
+  border:1px solid var(--border);
+  border-radius:12px;
+  background:#fafafa;
+}
+#settingsModal .settingsNav .navItem{
+  appearance:none;
+  border:1px solid transparent;
+  background:transparent;
+  border-radius:10px;
+  padding:9px 10px;
+  font-weight:700;
+  font-size:13px;
+  text-align:left;
+  
+}
+#settingsModal .settingsNav .navItem.active{
+  background:#111827;
+  color:#fff;
+}
+#settingsModal .settingsMain{ min-width:0; }
+#settingsModal #settingsModal .tabPane{display:none;}
+#settingsModal .tabPane.active{display:block;}
+#settingsModal .tabPane.active{ display:block; }
+#settingsModal .settingsFooter{
+  margin-top:12px;
+  padding-top:12px;
+  border-top:1px solid var(--border);
+  display:flex;
+  gap:10px;
+  align-items:center;
+}
+#settingsModal .settingsFooter .footerRight{
+  margin-left:auto;
+  display:flex;
+  gap:8px;
+  align-items:center;
+}
+</style>
+
+
+<style>
+/* Token toggle button next to input */
+#settingsModal .tokenToggle{
+  width:30px; height:30px;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  margin-left:6px;
+  border-radius:10px;
+  background:#fff;
+  border:1px solid var(--border);
+  box-shadow:0 1px 0 rgba(0,0,0,.03);
+}
+#settingsModal .tokenToggle svg{ width:18px; height:18px; }
+#settingsModal .tokenToggle:hover{ background:#f3f4f6; border-color:#d1d5db; }
+</style>
+
+
+<style>
+/* === Option 3 nav actions (Reset/Save/Generate under tabs) === */
+#settingsModal .navActions{
+  margin-top:10px;
+  padding-top:10px;
+  border-top:1px solid var(--border);
+  display:flex;
+  flex-direction:column;
+  gap:8px;
+}
+#settingsModal .navBtn{
+  width:100%;
+  justify-content:center;
+}
+</style>
+
+
+<style>
+/* Backstop: hide panes unless active */
+#settingsModal .tabPane{ display:none !important; }
+#settingsModal .tabPane.active{ display:block !important; }
+</style>
+
+
+<style>
+/* Ensure folder/sync sections are not collapsible */
+#settingsModal details, #settingsModal summary{ display:none !important; }
+</style>
+
+
+<style>
+/* === v11: Fixed tab height to match Folder; centered nav buttons; folder gap removal === */
+#settingsModal .settingsNav .navItem{
+  text-align:center !important;
+  justify-content:center;
+}
+#settingsModal .navActions{ align-items:stretch; }
+#settingsModal .navBtn{ text-align:center; justify-content:center; }
+
+/* Remove extra top gap in Folder tab content */
+#settingsModal #tab-folders{ padding-top:0 !important; }
+#settingsModal #tab-folders .field:first-child{ margin-top:0 !important; padding-top:0 !important; }
+</style>
+
+
+<style>
+/* Settings modal version label */
+#settingsModal .settingsVersion{
+  margin-right:8px;
+  font-size:11px;
+  color:#6b7280;
+  white-space:nowrap;
+}
+#settingsModal .modalHeader{
+  display:flex;
+  align-items:center;
+}
+#settingsModal .modalHeader .title{
+  margin-right:auto;
+}
+</style>
+
 </head>
 <body>
 <div class="wrap">
@@ -589,14 +725,14 @@ table thead tr.weekHeader,
     <button id="authBtn" class="btn" disabled>Loading Google…</button>
     <button id="signoutBtn" class="btn secondary" disabled>Sign out</button>
     <span id="authState" class="pill">Drive: <strong>signed out</strong></span>
-    <span id="authError" class="pill err" style="display:none"></span>
+    <span id="authError" class="pill err" style="display:block;"></span>
   </div>
 
   <div id="currentWeekBlock"></div>
   <div class="sectionRule"></div>
   <div id="allWeeks"></div>
 
-  <div id="emptyState" class="empty" style="display:none;">
+  <div id="emptyState" class="empty" style="display:block;">
     Configure in <strong>Settings</strong> to generate weekly agendas.
   </div>
 </div>
@@ -606,13 +742,31 @@ table thead tr.weekHeader,
   <div class="modal">
     <header>
       <h2 id="settingsTitle">Weekly Agenda Settings</h2>
+      <span class="settingsVersion">Version: 2.0 (2025-12-21)</span>
       <button id="closeSettings" class="iconBtn" title="Close">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <path d="M18 6 6 18M6 6l12 12"/>
         </svg>
       </button>
     </header>
-    <div class="body">
+    
+<div class="body">
+  <div class="settingsSplit">
+    <nav class="settingsNav" aria-label="Settings sections">
+      <button type="button" class="navItem active" data-tab="schedule">Schedule</button>
+      <button type="button" class="navItem" data-tab="folders">Folder</button>
+      <button type="button" class="navItem" data-tab="sync">Sync</button>
+    
+      <div class="navActions" aria-label="Actions">
+        <button id="saveOnly" class="btn navBtn" style="background:#2563eb;border-color:#2563eb;color:#fff" type="button" title="Save settings only">Save</button>
+        <button id="saveSettings" class="btn navBtn" type="button" style="background:#16a34a;border-color:#16a34a;color:#fff" title="Save and render schedule">Generate</button>
+        <button id="resetDefaults" class="btn navBtn" style="background:#dc2626;border-color:#dc2626;color:#fff" type="button">Reset</button>
+      </div>
+</nav>
+
+    <div class="settingsMain">
+      <section class="tabPane active" id="tab-schedule" aria-label="Schedule">
+        
       <div class="topCols">
         <div class="fRow">
           <label for="yearInput">Year</label>
@@ -636,7 +790,8 @@ table thead tr.weekHeader,
         </div>
       </div>
 
-      <div class="field" style="margin-top:6px;">
+      
+        <div class="field" style="margin-top:6px;">
         <label>Weeks to skip (not counted)</label>
         <div id="skipRows"></div>
         <div class="row" style="margin-top:8px;">
@@ -652,23 +807,26 @@ table thead tr.weekHeader,
 
         
       </div>
-      <div class="field" style="margin-top:16px;">
-        <div id="folderToggle" class="collapsibleHead" role="button" tabindex="0" aria-expanded="false" aria-controls="folderChooserWrap">
-          <span class="chev">▶</span>
-          <span>Restrict each period to a Google Drive folder (optional)</span>
-        </div>
-        <div id="folderChooserWrap" style="display:none;">
-          <div id="folderChooserArea" style="margin-top:10px;"></div>
-        </div>
-      </div>
 
-<div class="gistPanel" aria-label="Gist sync">
+        </section>
+
+      <section class="tabPane" id="tab-folders" aria-label="Folders">
+        <div class="field" style="margin-top:16px;">
+          <label style="display:block; margin-bottom:8px;">Restrict each period to a Google Drive folder (optional)</label>
+          <div id="folderChooserWrap" style="display:block;">
+            <div id="folderChooserArea" style="margin-top:10px;"></div>
+          </div>
+        </div>
+      </section>
+
+      <section class="tabPane" id="tab-sync" aria-label="Sync">
+        <div class="gistPanel" aria-label="Gist sync">
         
 
         <div id="gistBlock" class="gistWrap">
           <div class="gistRow compact">
             <label for="gistToken">GitHub Token</label>
-            <input id="gistToken" type="text" />
+            <input id="gistToken" type="password" />
           </div>
           <div class="gistRow compact">
             <label for="gistId">Gist ID (optional)</label>
@@ -681,22 +839,19 @@ table thead tr.weekHeader,
             <button id="gistUpdate" class="btn secondary" type="button" title="Force-save this device to Gist">Update</button>
           </div>
 
-          <div class="gistRow compact" id="gistStatusRow" style="display:none; margin-top:10px;">
+          <div class="gistRow compact" id="gistStatusRow" style="display:block; margin-top:10px;">
             <label>Status</label>
             <div class="gistBadge" id="gistStatus">…</div>
           </div>
         </div>
       </div>
 
-<footer>
-      <div class="row">
-        <button id="resetDefaults" class="btn secondary">Reset to Default</button>
-      </div>
-      <div class="row">
-        <button id="saveSettings" class="btn" style="border-color:#10b981;background:#ecfdf5;color:#065f46">Save &amp; Generate</button>
-      </div>
-    </footer>
+</section>
+    </div>
   </div>
+</div>
+
+</div>
 </div>
 
 <!-- Google APIs -->
@@ -1602,9 +1757,11 @@ function collectSkipRows(){
   rows.forEach(r=>{ const [fromInp,toInp]=r.querySelectorAll("input"); const from=fromInp?.value||""; const to=toInp?.value||""; if(from&&to) out.push({from,to}); });
   return out;
 }
-function setFolderCollapsed(collapsed){ const expanded=!collapsed; folderToggle.setAttribute("aria-expanded", String(expanded)); folderChooserWrap.style.display=expanded?"block":"none"; }
-folderToggle.addEventListener("click",()=> setFolderCollapsed(folderChooserWrap.style.display!=="none"));
-folderToggle.addEventListener("keydown",(e)=>{ if(e.key===" "||e.key==="Enter"){ e.preventDefault(); setFolderCollapsed(folderChooserWrap.style.display!=="none"); } });
+// Folder chooser is always visible (no collapse UI)
+function setFolderCollapsed(_collapsed){
+  try{ folderChooserWrap.style.display = "block"; }catch(_){}
+}
+// (No folderToggle click handlers)setFolderCollapsed(folderChooserWrap.style.display!=="none"); } });
 
 /* Always show Gist block */
 function showHideGistBlock(){ gistBlock.style.display = "block"; }
@@ -1755,7 +1912,7 @@ const next={
     labelsFinalized:true
   };
 
-  saveCfg(next); closeModal(); renderAll();
+  saveCfg(next); closeModal(); if(!window.__SAVE_ONLY__) { renderAll(); }
 
   if (GOOGLE.authed) { const ok = await writeSyncToDrive(buildSyncPayload()); if (!ok) console.warn("Drive sync (settings) failed"); }
   gistWriteAll().catch(()=>{});
@@ -2177,6 +2334,184 @@ function closePicker(){
   btn.addEventListener('click', ()=>{
     input.type = (input.type === 'password') ? 'text' : 'password';
   });
+})();
+</script>
+
+
+<script>
+/* === Settings modal: left nav tabs (Option 3) + Save-only button === */
+(function(){
+  const modal = document.getElementById('settingsModal');
+  if(!modal) return;
+
+  function setActive(tab){
+    modal.querySelectorAll('.settingsNav .navItem').forEach(b=>{
+      b.classList.toggle('active', b.dataset.tab===tab);
+    });
+    modal.querySelectorAll('.tabPane').forEach(p=>{
+      p.classList.toggle('active', p.id === 'tab-' + tab);
+    });
+  }
+
+  modal.addEventListener('click', (e)=>{
+    const btn = e.target.closest('.settingsNav .navItem');
+    if(btn){
+      e.preventDefault();
+      setActive(btn.dataset.tab);
+    }
+  }, true);
+
+  // Default to Schedule tab whenever modal opens
+  const openBtn = document.getElementById('openSettings');
+  if(openBtn){
+    openBtn.addEventListener('click', ()=>{ setActive('schedule'); }, true);
+  }
+
+  // Save-only: save config without rendering schedule
+  const saveOnlyBtn = document.getElementById('saveOnly');
+  if(saveOnlyBtn){
+    saveOnlyBtn.addEventListener('click', async ()=>{
+      // Reuse the same validation/build logic by temporarily calling the existing handler code pattern:
+      // We emulate the "saveSettings" handler but omit renderAll().
+      try{
+        const yearStr=(document.getElementById("yearInput").value||"").trim();
+        if(yearStr && (+yearStr < 2025 || !/^\d{4}$/.test(yearStr))){
+          alert("Year must be 2025 or higher.");
+          document.getElementById("yearInput").focus();
+          return;
+        }
+      }catch(_){}
+
+      // Call the existing saveSettings logic if exposed? If not, we re-run the same build as in handler.
+      // We grab the handler by cloning its code pathway: click saveSettings but block renderAll.
+      // We'll set a flag that the handler checks.
+      window.__SAVE_ONLY__ = true;
+      document.getElementById("saveSettings").click();
+      window.__SAVE_ONLY__ = false;
+    });
+  }
+})();
+</script>
+
+
+<script>
+/* === Token mask toggle (Lock/Unlock SVG) === */
+(function(){
+  const inp = document.getElementById('gistToken');
+  if(!inp) return;
+
+  const btn = document.createElement('button');
+  btn.type='button';
+  btn.className='iconBtn tokenToggle';
+  btn.title='Show / hide token';
+  btn.setAttribute('aria-label','Show token');
+
+  const lockSvg = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+    <rect x="4" y="11" width="16" height="10" rx="2"/>
+    <path d="M8 11V8a4 4 0 0 1 8 0v3"/>
+  </svg>`;
+  const unlockSvg = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+    <rect x="4" y="11" width="16" height="10" rx="2"/>
+    <path d="M8 11V9a4 4 0 0 1 7.5-2"/>
+  </svg>`;
+
+  btn.innerHTML = lockSvg;
+
+  btn.addEventListener('click', ()=>{
+    const showing = (inp.type === 'text');
+    inp.type = showing ? 'password' : 'text';
+    btn.innerHTML = showing ? lockSvg : unlockSvg;
+    btn.setAttribute('aria-label', showing ? 'Show token' : 'Hide token');
+  });
+
+  // insert right after input
+  inp.insertAdjacentElement('afterend', btn);
+})();
+</script>
+
+
+<script>
+/* === FORCE tab visibility (defensive): only active pane is shown === */
+(function(){
+  function setActive(tab){
+    const modal = document.getElementById('settingsModal');
+    if(!modal) return;
+
+    const panes = modal.querySelectorAll('.tabPane');
+    panes.forEach(p=>{
+      const isActive = (p.id === 'tab-' + tab);
+      p.classList.toggle('active', isActive);
+      p.hidden = !isActive;
+      p.style.display = isActive ? 'block' : 'none';
+    });
+
+    modal.querySelectorAll('.settingsNav .navItem').forEach(b=>{
+      const isActive = (b.dataset.tab === tab);
+      b.classList.toggle('active', isActive);
+      b.setAttribute('aria-current', isActive ? 'page' : 'false');
+    });
+  }
+
+  // Click handling (capture) for reliability
+  document.addEventListener('click', (e)=>{
+    const btn = e.target.closest('#settingsModal .settingsNav .navItem');
+    if(btn){
+      e.preventDefault();
+      setActive(btn.dataset.tab);
+    }
+  }, true);
+
+  // Default to schedule when opening modal
+  const openBtn = document.getElementById('openSettings');
+  if(openBtn){
+    openBtn.addEventListener('click', ()=>setActive('schedule'), true);
+  }
+
+  // Also enforce on load (in case modal is already open)
+  window.addEventListener('load', ()=>setActive('schedule'));
+})();
+</script>
+
+
+<script>
+/* === v11: Make all tab panes share the same min-height (match Folder) === */
+(function(){
+  function applyUniformTabHeight(){
+    const modal = document.getElementById('settingsModal');
+    if(!modal) return;
+    const main = modal.querySelector('.settingsMain');
+    const folderPane = modal.querySelector('#tab-folders');
+    if(!main || !folderPane) return;
+
+    const prevDisplay = folderPane.style.display;
+    const prevHidden = folderPane.hidden;
+
+    folderPane.hidden = false;
+    folderPane.style.display = 'block';
+
+    const h = Math.ceil(folderPane.scrollHeight);
+
+    folderPane.hidden = prevHidden;
+    folderPane.style.display = prevDisplay;
+
+    if(h > 0){
+      main.style.minHeight = h + 'px';
+      modal.querySelectorAll('.tabPane').forEach(p=>{
+        p.style.minHeight = h + 'px';
+      });
+    }
+  }
+
+  const openBtn = document.getElementById('openSettings');
+  if(openBtn){
+    openBtn.addEventListener('click', ()=>setTimeout(applyUniformTabHeight, 0), true);
+  }
+  document.addEventListener('click', (e)=>{
+    const btn = e.target.closest('#settingsModal .settingsNav .navItem');
+    if(btn) setTimeout(applyUniformTabHeight, 0);
+  }, true);
+
+  window.addEventListener('load', ()=>setTimeout(applyUniformTabHeight, 0));
 })();
 </script>
 
