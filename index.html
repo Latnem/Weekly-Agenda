@@ -691,6 +691,18 @@ table thead tr.weekHeader,
 }
 </style>
 
+
+<style>
+/* Schedule Overview modal list */
+.overviewList{
+  padding-left:18px;
+  line-height:1.6;
+  font-size:14px;
+  margin:0;
+}
+.overviewList li{ margin-bottom:6px; }
+</style>
+
 </head>
 <body>
 <div class="wrap">
@@ -726,6 +738,14 @@ table thead tr.weekHeader,
     <button id="signoutBtn" class="btn secondary" disabled>Sign out</button>
     <span id="authState" class="pill">Drive: <strong>signed out</strong></span>
     <span id="authError" class="pill err" style="display:block;"></span>
+    <button id="openScheduleOverview" class="iconBtn" type="button" title="Schedule overview" aria-label="Schedule overview">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+        <rect x="3" y="4" width="18" height="18" rx="2"></rect>
+        <line x1="16" y1="2" x2="16" y2="6"></line>
+        <line x1="8" y1="2" x2="8" y2="6"></line>
+        <line x1="3" y1="10" x2="21" y2="10"></line>
+      </svg>
+    </button>
   </div>
 
   <div id="currentWeekBlock"></div>
@@ -2512,6 +2532,59 @@ function closePicker(){
   }, true);
 
   window.addEventListener('load', ()=>setTimeout(applyUniformTabHeight, 0));
+})();
+</script>
+
+
+<!-- Schedule Overview Modal -->
+<div id="scheduleOverviewModal" class="modalBackdrop" role="dialog" aria-modal="true" aria-labelledby="scheduleOverviewTitle" style="display:none;">
+  <div class="modal" style="width:min(520px,92vw);">
+    <header>
+      <h2 id="scheduleOverviewTitle">Schedule Overview</h2>
+      <button id="closeScheduleOverview" class="iconBtn" type="button" title="Close" aria-label="Close">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+          <path d="M18 6 6 18M6 6l12 12"></path>
+        </svg>
+      </button>
+    </header>
+    <div class="body">
+      <ul class="overviewList">
+        <li><strong>Monday, January 19</strong>: Martin Luther King Jr Birthday</li>
+        <li><strong>Monday, February 16</strong>: Presidents' Day</li>
+        <li><strong>Friday, March 27</strong>: Cesar E. Chavez Birthday</li>
+        <li><strong>March 30 – April 1</strong>: Spring Recess</li>
+        <li><strong>Friday, April 24</strong>: Armenian Genocide Remembrance Day</li>
+        <li><strong>Monday, May 25</strong>: Memorial Day</li>
+        <li><strong>Wednesday, June 10</strong>: Last Day of Instruction</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ===== Schedule Overview Modal (calendar icon button) ===== */
+(function(){
+  const modal = document.getElementById('scheduleOverviewModal');
+  const openBtn = document.getElementById('openScheduleOverview');
+  const closeBtn = document.getElementById('closeScheduleOverview');
+  if(!modal || !openBtn) return;
+
+  function open(){
+    modal.classList.add('show');   // harmless if CSS uses .show
+    modal.style.display = 'flex';  // required because modalBackdrop defaults to display:block in this app
+  }
+  function close(){
+    modal.classList.remove('show');
+    modal.style.display = 'none';
+  }
+
+  openBtn.addEventListener('click', (e)=>{ e.preventDefault(); open(); }, true);
+  if(closeBtn) closeBtn.addEventListener('click', (e)=>{ e.preventDefault(); close(); }, true);
+
+  modal.addEventListener('click', (e)=>{ if(e.target === modal) close(); }, true);
+
+  // make sure closed on load
+  close();
 })();
 </script>
 
